@@ -18,7 +18,7 @@
     </header>
 
     <main class="mx-auto max-w-5xl px-4 py-8">
-        {{-- Messaggio flash (impostato dal controller nella tappa 6) --}}
+        {{-- Messaggio flash: impostato dal controller con ->with('status', '...') --}}
         @if (session('status'))
             <div class="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-800">
                 {{ session('status') }}

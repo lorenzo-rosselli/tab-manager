@@ -6,6 +6,7 @@ use App\Http\Requests\SongRequest;
 use App\Models\Song;
 use App\Services\TabDocxGenerator;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -13,13 +14,23 @@ class SongController extends Controller
 {
     /**
      * Elenco dei brani, dal più recente.
-     * (La ricerca per titolo/artista arriva nella tappa 6.)
+     * Con ?q=... nell'indirizzo mostra solo i brani il cui titolo o artista contiene il testo cercato.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $songs = Song::latest()->get();
+        $search = trim((string) $request->query('q', ''));
 
-        return view('songs.index', ['songs' => $songs]);
+        $songs = Song::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('title', 'like', "%{$search}%")
+                        ->orWhere('artist', 'like', "%{$search}%");
+                });
+            })
+            ->latest()
+            ->get();
+
+        return view('songs.index', ['songs' => $songs, 'search' => $search]);
     }
 
     /**
@@ -38,7 +49,7 @@ class SongController extends Controller
     {
         $song = Song::create($request->validated());
 
-        return redirect()->route('songs.show', $song);
+        return redirect()->route('songs.show', $song)->with('status', 'Brano salvato.');
     }
 
     /**
@@ -64,7 +75,7 @@ class SongController extends Controller
     {
         $song->update($request->validated());
 
-        return redirect()->route('songs.show', $song);
+        return redirect()->route('songs.show', $song)->with('status', 'Modifiche salvate.');
     }
 
     /**
@@ -74,7 +85,7 @@ class SongController extends Controller
     {
         $song->delete();
 
-        return redirect()->route('songs.index');
+        return redirect()->route('songs.index')->with('status', 'Brano eliminato.');
     }
 
     /**

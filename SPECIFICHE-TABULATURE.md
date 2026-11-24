@@ -95,7 +95,7 @@ React, Vue, Livewire, Inertia, starter kit con autenticazione, MySQL/PostgreSQL.
 | Metodo | URL | Azione controller | Nome rotta | Descrizione |
 |---|---|---|---|---|
 | GET | `/` | — | — | Redirect a `/songs` |
-| GET | `/songs` | `index` | `songs.index` | Elenco brani (con ricerca opzionale) |
+| GET | `/songs` | `index` | `songs.index` | Elenco brani; con `?q=testo` filtra per titolo o artista (`LIKE`) |
 | GET | `/songs/create` | `create` | `songs.create` | Form nuovo brano |
 | POST | `/songs` | `store` | `songs.store` | Salva nuovo brano |
 | GET | `/songs/{song}` | `show` | `songs.show` | Anteprima della tabulatura |
@@ -114,10 +114,11 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 ### Viste Blade (`resources/views`)
 Layout con `@extends('layouts.app')` / `@section` / `@yield` (scelta del 24/11/2026, al posto dei componenti Blade). La vista `welcome.blade.php` di Laravel è stata eliminata. Il layout carica solo il CSS con `@vite(['resources/css/app.css'])`: niente JavaScript e niente `@fonts` (si usano i font di sistema).
 
-- `layouts/app.blade.php`: layout comune (titolo app, link "Nuovo brano", messaggi flash)
-- `songs/index.blade.php`: tabella con titolo, artista, strumento, data, e azioni (Vedi, Modifica, Scarica .docx, Elimina con conferma). 
+- `layouts/app.blade.php`: layout comune (titolo app, link "Nuovo brano", messaggi flash `session('status')`: "Brano salvato.", "Modifiche salvate.", "Brano eliminato.")
+- `songs/index.blade.php`: casella di ricerca (form GET con icona lente e icona per annullare la ricerca), tabella con titolo, artista, strumento, data, e azioni (Vedi, Modifica, Scarica .docx, Elimina con conferma).
+- Conferma di eliminazione (elenco e anteprima): **finestra modale** nel partial `songs/_delete.blade.php`, fatta con l'**API Popover** di HTML (`popover` + `popovertarget`), senza JavaScript. Mostra titolo e artista del brano; si chiude con l'icona Annulla, con Esc o cliccando fuori; il form DELETE parte solo dal pulsante di conferma. Sostituisce il `confirm()` del browser (scelta del 24/11/2026). Richiede un browser recente (Chrome/Edge 114+, Firefox 125+, Safari 17+).
 - **Tutti i comandi dell'app sono icone** (elenco, anteprima, form, intestazione), con il nome come tooltip (attributo `title`) e `aria-label`. Resta testo solo il link dentro la frase dell'elenco vuoto ("Aggiungi il primo").
-- `icons/*.blade.php` (`eye`, `pencil`, `download`, `trash`, `plus`, `arrow-left`, `save`, `x-mark`): icone SVG inline incluse con `@include('icons.nome')`, copiando l'SVG senza installare pacchetti. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` (pulsante Salva) viene da Lucide (licenza ISC), con lo spessore portato a 1.5.
+- `icons/*.blade.php` (`eye`, `pencil`, `download`, `trash`, `plus`, `arrow-left`, `save`, `x-mark`, `magnifying-glass`): icone SVG inline incluse con `@include('icons.nome')`, copiando l'SVG senza installare pacchetti. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` (pulsante Salva) viene da Lucide (licenza ISC), con lo spessore portato a 1.5.
 - `songs/create.blade.php` e `songs/edit.blade.php`: usano un partial comune `songs/_form.blade.php`
 - `songs/show.blade.php`: dati del brano e tabulatura in un blocco `<pre>` con font monospace
 
@@ -145,7 +146,7 @@ Con una Form Request `App\Http\Requests\SongRequest`, usata sia da `store` sia d
 'notes'      => ['nullable', 'string'],
 ```
 
-I messaggi di errore devono essere in italiano (`APP_LOCALE=it` più i file di traduzione, oppure messaggi personalizzati nella Form Request).
+I messaggi di errore sono in italiano grazie a `APP_LOCALE=it` e al file di traduzione **`lang/it/validation.php`** (scelta del 24/11/2026). Il file contiene solo le regole usate (`required`, `string`, `in`, `max.string`) e, in `attributes`, i nomi italiani dei campi (titolo, artista, strumento, accordatura, tabulatura, note). Per le regole non tradotte Laravel usa l'inglese (`APP_FALLBACK_LOCALE=en`).
 
 ---
 
@@ -205,7 +206,8 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
    - Verificate nel browser; tutti i comandi sono icone con tooltip.
 5. **Export Word** ✅ *(completata il 24/11/2026)*: servizio `TabDocxGenerator` e azione `download`.
    - Verificato in Word: impaginazione, allineamento della tabulatura, righe vuote, nome file e caratteri speciali (`&`, `<`, `>`).
-6. **Rifiniture**: messaggi flash, conferma di eliminazione, ricerca per titolo/artista nell'elenco, traduzioni in italiano.
+6. **Rifiniture** ✅ *(completata il 24/11/2026)*: messaggi flash, conferma di eliminazione, ricerca per titolo/artista nell'elenco, traduzioni in italiano.
+   - Verificato nel browser: messaggi di validazione in italiano, messaggi flash, modale di conferma (centrata con `m-auto h-fit`, perché il Preflight di Tailwind azzera i margini), ricerca.
 7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).
 
 ### Possibili sviluppi futuri (non ora)

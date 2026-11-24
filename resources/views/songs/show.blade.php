@@ -21,14 +21,7 @@
                class="rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">
                 @include('icons.pencil')
             </a>
-            <form method="POST" action="{{ route('songs.destroy', $song) }}">
-                @csrf
-                @method('DELETE')
-                <button type="submit" title="Elimina" aria-label="Elimina"
-                        class="cursor-pointer rounded-md p-2 text-red-700 hover:bg-red-50 hover:text-red-800">
-                    @include('icons.trash')
-                </button>
-            </form>
+            @include('songs._delete')
         </div>
     </div>
 

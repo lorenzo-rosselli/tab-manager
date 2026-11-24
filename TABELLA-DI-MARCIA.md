@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | ⬜ Da fare | Messaggi flash, conferma eliminazione, ricerca, italiano |
+| 6 | Rifiniture | ✅ Completata | Messaggi flash, conferma eliminazione, ricerca, italiano |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -184,23 +184,34 @@ php artisan make:class Services/TabDocxGenerator
 
 ---
 
-## Tappa 6 – Rifiniture
+## Tappa 6 – Rifiniture ✅
 
 **Obiettivo:** rendere l'app comoda da usare e tutta in italiano.
 
 **Cosa impari:** session flash, query con `where`/`like`, query string, localizzazione.
 
 **Attività**
-- [ ] Messaggi flash dopo salvataggio, modifica, eliminazione ("Brano salvato", ecc.)
-- [ ] Conferma prima dell'eliminazione (`onsubmit="return confirm(...)"`, nessuna libreria)
-- [ ] Ricerca per titolo/artista nell'elenco (`/songs?q=...`)
-- [ ] Messaggi di validazione in italiano
+- [x] Messaggi flash dopo salvataggio, modifica, eliminazione ("Brano salvato", ecc.)
+- [x] Conferma prima dell'eliminazione con finestra modale (API Popover di HTML, nessun JavaScript; sostituisce il `confirm()` del browser)
+- [x] Ricerca per titolo/artista nell'elenco (`/songs?q=...`)
+- [x] Messaggi di validazione in italiano
 
-**Decisione da prendere prima di iniziare:** per i messaggi in italiano le specifiche indicano due strade:
-1. scrivere a mano `lang/it/validation.php` (servono solo i messaggi delle regole usate), oppure
-2. messaggi personalizzati nel metodo `messages()` di `SongRequest`.
+**Decisione presa:** messaggi in italiano con il file di traduzione `lang/it/validation.php` scritto a mano (solo le regole usate + nomi dei campi in `attributes`). Nessun pacchetto esterno.
 
-Un pacchetto di traduzioni esterno sarebbe una dipendenza in più, quindi va concordato prima di usarlo.
+**File coinvolti**
+| File | Contenuto |
+|---|---|
+| `lang/it/validation.php` | Messaggi `required`, `string`, `in`, `max.string` e nomi italiani dei campi |
+| `app/Http/Controllers/SongController.php` | `index(Request)` con ricerca `?q=` (`when` + `where`/`orWhere` `like`); `->with('status', ...)` dopo store/update/destroy |
+| `resources/views/songs/index.blade.php` | Form di ricerca GET, messaggio "nessun brano trovato", include `_delete` |
+| `resources/views/songs/show.blade.php` | Include `_delete` |
+| `resources/views/songs/_delete.blade.php` | Pulsante cestino + modale di conferma (Popover API) con il form DELETE |
+| `resources/views/icons/magnifying-glass.blade.php` | Icona lente (Heroicons, MIT) |
+
+**Avanzamento**
+- [x] Codice scritto
+- [x] Verifica nel browser
+- [x] Modale centrata: aggiunte le classi `m-auto h-fit` (il Preflight di Tailwind azzera il `margin: auto` del popover)
 
 ---
 

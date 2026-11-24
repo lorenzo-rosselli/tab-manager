@@ -3,9 +3,30 @@
 @section('title', 'Brani')
 
 @section('content')
-    <h1 class="mb-6 text-2xl font-semibold">Brani</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-2xl font-semibold">Brani</h1>
 
-    @if ($songs->isEmpty())
+        {{-- Ricerca: un form GET mette il testo nell'indirizzo, es. /songs?q=queen --}}
+        <form method="GET" action="{{ route('songs.index') }}" class="flex items-center gap-1">
+            <input type="search" name="q" value="{{ $search }}" placeholder="Cerca titolo o artista"
+                   aria-label="Cerca titolo o artista"
+                   class="w-64 rounded-md border border-stone-300 px-3 py-2 text-sm">
+            <button type="submit" title="Cerca" aria-label="Cerca"
+                    class="cursor-pointer rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">
+                @include('icons.magnifying-glass')
+            </button>
+            @if ($search !== '')
+                <a href="{{ route('songs.index') }}" title="Annulla ricerca" aria-label="Annulla ricerca"
+                   class="rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">
+                    @include('icons.x-mark')
+                </a>
+            @endif
+        </form>
+    </div>
+
+    @if ($songs->isEmpty() && $search !== '')
+        <p class="text-stone-600">Nessun brano trovato per «{{ $search }}».</p>
+    @elseif ($songs->isEmpty())
         <p class="text-stone-600">
             Nessun brano in archivio.
             <a href="{{ route('songs.create') }}" class="underline">Aggiungi il primo</a>.
@@ -44,14 +65,7 @@
                                        class="rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">
                                         @include('icons.download')
                                     </a>
-                                    <form method="POST" action="{{ route('songs.destroy', $song) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" title="Elimina" aria-label="Elimina"
-                                                class="cursor-pointer rounded-md p-2 text-red-700 hover:bg-red-50 hover:text-red-800">
-                                            @include('icons.trash')
-                                        </button>
-                                    </form>
+                                    @include('songs._delete')
                                 </div>
                             </td>
                         </tr>
