@@ -35,14 +35,14 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 | Node.js / npm | Node v26 (installazione Windows) |
 | Editor | Visual Studio Code |
 | Terminale | Windows PowerShell 5.1 (consigliato PowerShell 7) |
-| Cartella progetti | `D:\Workspaces\Laravel Project\` |
+| Cartella progetto | `D:\Workspaces\Rosse Production\Tab Manager` (repository GitHub `lorenzo-rosselli/tab-manager`, ramo `main`) |
 
 ### Note sull'ambiente (problemi già risolti)
 - **Smart App Control** blocca i `php.exe` scaricati a mano da windows.php.net (errore "bloccato dai criteri di Device Guard"). Il PHP installato con php.new invece funziona. Non si possono aggiungere eccezioni per singole app.
 - **Alternativa di riserva:** WSL con Ubuntu è già installato e configurato (PHP 8.5, Composer, Laravel Installer, Node). Se su Windows compare un nuovo blocco, si lavora lì, con i progetti in `~/progetti`.
 - **PowerShell 5.1 non supporta `&&`**: i comandi vanno eseguiti uno alla volta, oppure si usa PowerShell 7.
 - La **Execution Policy** è stata impostata a `RemoteSigned` per l'utente corrente, così `npm` funziona.
-- Il percorso `Laravel Project` contiene uno spazio: nei comandi va scritto **tra virgolette**.
+- Il percorso `Rosse Production\Tab Manager` contiene spazi: nei comandi va scritto **tra virgolette**.
 
 ---
 
@@ -56,6 +56,7 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 | Database | **SQLite** | File unico `database/database.sqlite`, predefinito in Laravel |
 | Export Word | **PHPWord** (`phpoffice/phpword`) | Unica dipendenza aggiuntiva |
 | Test | **Pest** | Predefinito in Laravel |
+| Supporto sviluppo | **Laravel Boost** (`laravel/boost`, solo `require-dev`) | Installato da `laravel new`; fornisce linee guida agli assistenti AI tramite `AGENTS.md` e `CLAUDE.md`. Non fa parte dell'app: si tiene |
 
 ### Escluso volutamente
 React, Vue, Livewire, Inertia, starter kit con autenticazione, MySQL/PostgreSQL.
@@ -183,7 +184,10 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
 
 ## 9. Piano di sviluppo a tappe
 
-1. **Setup**: progetto `laravel new tab-manager` (nessuno starter kit, Pest, SQLite), poi `composer require phpoffice/phpword`.
+1. **Setup** ✅ *(completata il 24/11/2026)*: progetto `laravel new tab-manager` (nessuno starter kit, Pest, SQLite), poi `composer require phpoffice/phpword`.
+   - Poiché la cartella `Tab Manager` conteneva già il repository git, il progetto è stato creato in una cartella temporanea e poi spostato dentro `Tab Manager`, mantenendo `README.md`, `SPECIFICHE-TABULATURE.md` e il collegamento a GitHub. Il `.gitignore` è quello di Laravel 13.
+   - Versioni installate: Laravel Framework 13.44.1, `phpoffice/phpword` 1.4.0 (con la dipendenza `phpoffice/math` 0.3.0).
+   - `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it` (i file di traduzione italiani arrivano nella tappa 6).
 2. **Database**: migration `songs`, modello `Song`, (Enum `Instrument`), seeder con dati di prova.
 3. **Rotte e controller**: `SongController` resource, Form Request `SongRequest`.
 4. **Viste**: layout, elenco, form (create/edit), anteprima.
@@ -207,3 +211,5 @@ Quando ricevi questo file:
 - Lavora **per gradi**, una tappa alla volta (sezione 9), spiegando cosa fa ogni file e ogni comando. L'utente sta imparando PHP e Laravel.
 - Rispondi in **italiano**.
 - Mantieni l'app **semplice**: non aggiungere librerie o funzioni non previste senza chiedere.
+- **Non gestire commit e push su git**: li fa l'utente quando lo ritiene opportuno.
+- Se una decisione modifica quanto scritto qui, **aggiorna questo file** (sia nel progetto sia nella cartella).
