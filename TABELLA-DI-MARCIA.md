@@ -14,8 +14,8 @@
 | 1 | Setup | ✅ Completata | Progetto Laravel 13 pulito + PHPWord |
 | 2 | Database | ✅ Completata | Tabella `songs`, modello `Song`, Enum `Instrument`, dati di prova |
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
-| 4 | Viste | 🔄 In corso | Layout, elenco, form, anteprima (Blade + Tailwind) |
-| 5 | Export Word | ⬜ Da fare | Servizio `TabDocxGenerator`, download del `.docx` |
+| 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
+| 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
 | 6 | Rifiniture | ⬜ Da fare | Messaggi flash, conferma eliminazione, ricerca, italiano |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
@@ -100,11 +100,11 @@ php artisan route:list --path=songs
 
 **Fatto quando**
 - [x] `route:list` mostra le 7 rotte `songs.*` + `songs.download`
-- [ ] Ogni azione restituisce la vista giusta o fa il redirect corretto → si verifica nella tappa 4
+- [x] Ogni azione restituisce la vista giusta o fa il redirect corretto (verificato nella tappa 4)
 
 ---
 
-## Tappa 4 – Viste 🔄
+## Tappa 4 – Viste ✅
 
 **Obiettivo:** vedere e usare l'app nel browser: elenco, inserimento, modifica, anteprima.
 
@@ -143,16 +143,16 @@ npm run dev
 **Avanzamento**
 - [x] Sei viste create, `welcome.blade.php` eliminata
 - [x] Verifica nel browser (tutto ok; download 501 come previsto)
-- [ ] Verifica delle icone in tutte le pagine
+- [x] Verifica delle icone in tutte le pagine
 
 **Fatto quando**
-- [ ] Si può creare, vedere, modificare ed eliminare un brano dal browser
-- [ ] La tabulatura nel `<textarea>` e nel `<pre>` resta allineata (font monospace, `wrap="off"`)
-- [ ] Gli errori di validazione compaiono sotto i campi e i dati inseriti non si perdono
+- [x] Si può creare, vedere, modificare ed eliminare un brano dal browser
+- [x] La tabulatura nel `<textarea>` e nel `<pre>` resta allineata (font monospace, `wrap="off"`)
+- [x] Gli errori di validazione compaiono sotto i campi e i dati inseriti non si perdono
 
 ---
 
-## Tappa 5 – Export Word
+## Tappa 5 – Export Word ✅
 
 **Obiettivo:** scaricare un brano come file `.docx` impaginato.
 
@@ -166,15 +166,20 @@ php artisan make:class Services/TabDocxGenerator
 **File coinvolti**
 | File | Contenuto |
 |---|---|
-| `app/Services/TabDocxGenerator.php` | `generate(Song $song): string` con l'impaginazione della sezione 7 |
-| `app/Http/Controllers/SongController.php` | Azione `download` con `response()->download(...)->deleteFileAfterSend()` |
+| `app/Services/TabDocxGenerator.php` | `generate(Song $song): string` con l'impaginazione della sezione 7; `filename()` per il nome del file; `lines()` privato per dividere il testo in righe |
+| `app/Http/Controllers/SongController.php` | Azione `download` con dependency injection del servizio, `Content-Type` .docx esplicito e `->deleteFileAfterSend()` |
+
+**Note tecniche (verificate su PHPWord 1.4.0)**
+- PHPWord scrive il testo con `xml:space="preserve"`: gli spazi iniziali e interni vengono mantenuti.
+- L'escaping dei caratteri speciali è **disattivato** di default: va attivato con `Settings::setOutputEscapingEnabled(true)`, altrimenti un `&` o un `<` nel titolo o nella tabulatura (es. armonici `<7>`) rende il file .docx illeggibile.
 
 **Punti da verificare con attenzione**
-- [ ] Pagina A4, margini 2 cm; titolo 18 pt grassetto, artista 13 pt corsivo, riga info e note 10 pt
-- [ ] Tabulatura in Courier New 10 pt, una riga = un paragrafo, spaziatura 0
-- [ ] **Gli spazi vengono preservati** (aprire il file in Word e controllare l'allineamento)
-- [ ] Le righe vuote restano righe vuote; gli a capo `\r\n` sono normalizzati
-- [ ] Nome file `Artista - Titolo.docx` senza caratteri non validi per Windows
+- [x] Pagina A4, margini 2 cm; titolo 18 pt grassetto, artista 13 pt corsivo, riga info e note 10 pt
+- [x] Tabulatura in Courier New 10 pt, una riga = un paragrafo, spaziatura 0
+- [x] **Gli spazi vengono preservati** (aprire il file in Word e controllare l'allineamento)
+- [x] Le righe vuote restano righe vuote; gli a capo `\r\n` sono normalizzati
+- [x] Nome file `Artista - Titolo.docx` senza caratteri non validi per Windows
+- [x] Caratteri speciali (`&`, `<`, `>`) nel titolo e nella tabulatura: il file si apre senza errori
 - [x] Avviso nel form per le righe oltre ~80 caratteri (testo fisso sotto la textarea, tappa 4)
 
 ---

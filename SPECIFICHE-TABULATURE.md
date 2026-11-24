@@ -152,8 +152,10 @@ I messaggi di errore devono essere in italiano (`APP_LOCALE=it` più i file di t
 ## 7. Generazione del file .docx
 
 ### Classe `App\Services\TabDocxGenerator`
-- Metodo principale: `generate(Song $song): string`, che restituisce il percorso del file temporaneo creato.
-- Il controller lo restituisce con `response()->download($path, $filename)->deleteFileAfterSend()`.
+- Metodo principale: `generate(Song $song): string`, che restituisce il percorso del file temporaneo creato (con `tempnam()` nella cartella temporanea di sistema).
+- Metodo `filename(Song $song): string`: restituisce il nome `Artista - Titolo.docx` ripulito (fallback `tabulatura.docx` se resta vuoto).
+- Metodo privato `lines()`: normalizza gli a capo e divide in righe; le righe vuote in fondo al testo vengono tolte, quelle in mezzo restano.
+- Il controller riceve il servizio per dependency injection (`download(Song $song, TabDocxGenerator $generator)`) e lo restituisce con `response()->download($path, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'])->deleteFileAfterSend()`.
 
 ### Impaginazione del documento
 | Elemento | Formato |
@@ -166,7 +168,8 @@ I messaggi di errore devono essere in italiano (`APP_LOCALE=it` più i file di t
 | Tabulatura | **Courier New 10 pt**, una riga del testo = un paragrafo, interlinea singola, spaziatura prima/dopo = 0 |
 
 ### Regole importanti
-- **Mantenere gli spazi** all'inizio e dentro le righe, altrimenti la tabulatura si disallinea (verificare che PHPWord preservi gli spazi).
+- **Mantenere gli spazi** all'inizio e dentro le righe, altrimenti la tabulatura si disallinea. Verificato: PHPWord 1.4 scrive il testo con `xml:space="preserve"`.
+- **Attivare l'escaping** con `\PhpOffice\PhpWord\Settings::setOutputEscapingEnabled(true)`: di default è spento e caratteri come `&` o `<` corromperebbero il file.
 - Le righe vuote nella tabulatura restano righe vuote nel documento (separano i blocchi o le battute).
 - Una riga di circa **80 caratteri** sta nella larghezza di una pagina A4 con Courier New 10 pt. Le righe più lunghe vanno a capo nel Word: nel form va mostrato un avviso.
 - Normalizzare gli a capo (`\r\n` → `\n`).
@@ -198,9 +201,10 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
    - Verificato con `tinker`: 3 brani inseriti, `instrument->label()` restituisce "Basso".
 3. **Rotte e controller** ✅ *(completata il 24/11/2026)*: `SongController` resource, Form Request `SongRequest`.
    - `download` risponde 501 finché non viene implementato nella tappa 5; messaggi flash e ricerca arrivano nella tappa 6.
-4. **Viste** 🔄 *(in corso)*: layout, elenco, form (create/edit), anteprima.
-   - Viste create il 24/11/2026; da verificare nel browser.
-5. **Export Word**: servizio `TabDocxGenerator` e azione `download`.
+4. **Viste** ✅ *(completata il 24/11/2026)*: layout, elenco, form (create/edit), anteprima.
+   - Verificate nel browser; tutti i comandi sono icone con tooltip.
+5. **Export Word** ✅ *(completata il 24/11/2026)*: servizio `TabDocxGenerator` e azione `download`.
+   - Verificato in Word: impaginazione, allineamento della tabulatura, righe vuote, nome file e caratteri speciali (`&`, `<`, `>`).
 6. **Rifiniture**: messaggi flash, conferma di eliminazione, ricerca per titolo/artista nell'elenco, traduzioni in italiano.
 7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).
 

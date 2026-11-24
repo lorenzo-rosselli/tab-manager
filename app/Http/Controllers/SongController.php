@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SongRequest;
 use App\Models\Song;
+use App\Services\TabDocxGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SongController extends Controller
 {
@@ -77,10 +79,16 @@ class SongController extends Controller
 
     /**
      * Genera e scarica il file .docx del brano.
-     * Segnaposto: viene completato nella tappa 5 (TabDocxGenerator).
+     * Laravel crea da solo il TabDocxGenerator e lo passa al metodo (dependency injection).
      */
-    public function download(Song $song): never
+    public function download(Song $song, TabDocxGenerator $generator): BinaryFileResponse
     {
-        abort(501, 'Export Word non ancora disponibile (tappa 5).');
+        $path = $generator->generate($song);
+
+        return response()
+            ->download($path, $generator->filename($song), [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ])
+            ->deleteFileAfterSend();
     }
 }
