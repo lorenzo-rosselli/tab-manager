@@ -112,8 +112,12 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 ```
 
 ### Viste Blade (`resources/views`)
+Layout con `@extends('layouts.app')` / `@section` / `@yield` (scelta del 24/11/2026, al posto dei componenti Blade). La vista `welcome.blade.php` di Laravel è stata eliminata. Il layout carica solo il CSS con `@vite(['resources/css/app.css'])`: niente JavaScript e niente `@fonts` (si usano i font di sistema).
+
 - `layouts/app.blade.php`: layout comune (titolo app, link "Nuovo brano", messaggi flash)
-- `songs/index.blade.php`: tabella con titolo, artista, strumento, data, e azioni (Vedi, Modifica, Scarica .docx, Elimina con conferma)
+- `songs/index.blade.php`: tabella con titolo, artista, strumento, data, e azioni (Vedi, Modifica, Scarica .docx, Elimina con conferma). 
+- **Tutti i comandi dell'app sono icone** (elenco, anteprima, form, intestazione), con il nome come tooltip (attributo `title`) e `aria-label`. Resta testo solo il link dentro la frase dell'elenco vuoto ("Aggiungi il primo").
+- `icons/*.blade.php` (`eye`, `pencil`, `download`, `trash`, `plus`, `arrow-left`, `save`, `x-mark`): icone SVG inline incluse con `@include('icons.nome')`, copiando l'SVG senza installare pacchetti. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` (pulsante Salva) viene da Lucide (licenza ISC), con lo spessore portato a 1.5.
 - `songs/create.blade.php` e `songs/edit.blade.php`: usano un partial comune `songs/_form.blade.php`
 - `songs/show.blade.php`: dati del brano e tabulatura in un blocco `<pre>` con font monospace
 
@@ -121,8 +125,8 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 - `title`: input di testo
 - `artist`: input di testo
 - `instrument`: select (Basso / Chitarra)
-- `tuning`: input di testo, con i valori predefiniti suggeriti
-- `tab`: `<textarea>` grande, font monospace, `wrap="off"`, circa 20 righe
+- `tuning`: input di testo, con i valori predefiniti suggeriti tramite `<datalist>` HTML (nessun JavaScript)
+- `tab`: `<textarea>` grande, font monospace, `wrap="off"`, circa 20 righe, con sotto un avviso fisso sul limite di ~80 caratteri per riga nel Word
 - `notes`: `<textarea>` piccola, opzionale
 - Mostra gli errori di validazione sotto ogni campo e ripopola i campi con `old()`
 
@@ -194,7 +198,8 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
    - Verificato con `tinker`: 3 brani inseriti, `instrument->label()` restituisce "Basso".
 3. **Rotte e controller** ✅ *(completata il 24/11/2026)*: `SongController` resource, Form Request `SongRequest`.
    - `download` risponde 501 finché non viene implementato nella tappa 5; messaggi flash e ricerca arrivano nella tappa 6.
-4. **Viste**: layout, elenco, form (create/edit), anteprima.
+4. **Viste** 🔄 *(in corso)*: layout, elenco, form (create/edit), anteprima.
+   - Viste create il 24/11/2026; da verificare nel browser.
 5. **Export Word**: servizio `TabDocxGenerator` e azione `download`.
 6. **Rifiniture**: messaggi flash, conferma di eliminazione, ricerca per titolo/artista nell'elenco, traduzioni in italiano.
 7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).

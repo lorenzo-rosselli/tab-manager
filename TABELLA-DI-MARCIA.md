@@ -14,7 +14,7 @@
 | 1 | Setup | ✅ Completata | Progetto Laravel 13 pulito + PHPWord |
 | 2 | Database | ✅ Completata | Tabella `songs`, modello `Song`, Enum `Instrument`, dati di prova |
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
-| 4 | Viste | ⬜ Da fare | Layout, elenco, form, anteprima (Blade + Tailwind) |
+| 4 | Viste | 🔄 In corso | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ⬜ Da fare | Servizio `TabDocxGenerator`, download del `.docx` |
 | 6 | Rifiniture | ⬜ Da fare | Messaggi flash, conferma eliminazione, ricerca, italiano |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
@@ -104,7 +104,7 @@ php artisan route:list --path=songs
 
 ---
 
-## Tappa 4 – Viste
+## Tappa 4 – Viste 🔄
 
 **Obiettivo:** vedere e usare l'app nel browser: elenco, inserimento, modifica, anteprima.
 
@@ -129,6 +129,21 @@ npm run dev
 | `resources/views/songs/create.blade.php` | Form nuovo brano |
 | `resources/views/songs/edit.blade.php` | Form modifica |
 | `resources/views/songs/show.blade.php` | Dati del brano + tabulatura in `<pre>` monospace |
+| `resources/views/icons/*.blade.php` | Icone SVG (Vedi, Modifica, Scarica, Elimina, Nuovo, Indietro, Salva, Annulla) |
+
+**Scelte fatte**
+- Layout con `@extends` / `@section` (non componenti Blade).
+- Eliminata `resources/views/welcome.blade.php`.
+- Il layout carica solo `resources/css/app.css` (niente JS, niente `@fonts`).
+- Il layout mostra già il messaggio flash `session('status')`: i messaggi veri li imposta il controller nella tappa 6.
+- Elimina: per ora senza conferma (arriva nella tappa 6).
+- Accordature suggerite con `<datalist>`; avviso fisso sugli 80 caratteri sotto la tabulatura.
+- Tutti i comandi dell'app sono icone SVG inline (Heroicons MIT; floppy "Salva" da Lucide ISC; nessun pacchetto) con tooltip `title` e `aria-label`: elenco, anteprima, form (Salva/Annulla) e "Nuovo brano" nell'intestazione.
+
+**Avanzamento**
+- [x] Sei viste create, `welcome.blade.php` eliminata
+- [x] Verifica nel browser (tutto ok; download 501 come previsto)
+- [ ] Verifica delle icone in tutte le pagine
 
 **Fatto quando**
 - [ ] Si può creare, vedere, modificare ed eliminare un brano dal browser
@@ -160,7 +175,7 @@ php artisan make:class Services/TabDocxGenerator
 - [ ] **Gli spazi vengono preservati** (aprire il file in Word e controllare l'allineamento)
 - [ ] Le righe vuote restano righe vuote; gli a capo `\r\n` sono normalizzati
 - [ ] Nome file `Artista - Titolo.docx` senza caratteri non validi per Windows
-- [ ] Avviso nel form per le righe oltre ~80 caratteri
+- [x] Avviso nel form per le righe oltre ~80 caratteri (testo fisso sotto la textarea, tappa 4)
 
 ---
 
