@@ -13,7 +13,7 @@
 |---|---|---|---|
 | 1 | Setup | ✅ Completata | Progetto Laravel 13 pulito + PHPWord |
 | 2 | Database | ✅ Completata | Tabella `songs`, modello `Song`, Enum `Instrument`, dati di prova |
-| 3 | Rotte e controller | ⬜ Da fare | Rotte `/songs`, `SongController`, `SongRequest` |
+| 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ⬜ Da fare | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ⬜ Da fare | Servizio `TabDocxGenerator`, download del `.docx` |
 | 6 | Rifiniture | ⬜ Da fare | Messaggi flash, conferma eliminazione, ricerca, italiano |
@@ -71,7 +71,7 @@ php artisan db:seed
 
 ---
 
-## Tappa 3 – Rotte e controller
+## Tappa 3 – Rotte e controller ✅
 
 **Obiettivo:** definire tutti gli indirizzi dell'app e la logica che li gestisce.
 
@@ -93,9 +93,14 @@ php artisan route:list --path=songs
 | `app/Http/Controllers/SongController.php` | Azioni `index`, `create`, `store`, `show`, `edit`, `update`, `destroy` (e `download` vuota fino alla tappa 5) |
 | `app/Http/Requests/SongRequest.php` | Regole di validazione (sezione 6) e `authorize()` → `true` |
 
+**Scelte fatte**
+- `store` e `update` ricevono `SongRequest` e usano `$request->validated()`; dopo il salvataggio redirect a `songs.show`, dopo l'eliminazione a `songs.index`.
+- `download` è un segnaposto che risponde 501 fino alla tappa 5.
+- Messaggi flash e ricerca rinviati alla tappa 6, come da piano.
+
 **Fatto quando**
-- [ ] `route:list` mostra le 8 rotte `songs.*` + `songs.download`
-- [ ] Ogni azione restituisce la vista giusta o fa il redirect corretto (verificabile dopo la tappa 4)
+- [x] `route:list` mostra le 7 rotte `songs.*` + `songs.download`
+- [ ] Ogni azione restituisce la vista giusta o fa il redirect corretto → si verifica nella tappa 4
 
 ---
 

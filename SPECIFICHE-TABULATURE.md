@@ -192,7 +192,8 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
    - `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it` (i file di traduzione italiani arrivano nella tappa 6).
 2. **Database** ✅ *(completata il 24/11/2026)*: migration `songs`, modello `Song`, Enum `Instrument`, seeder con dati di prova.
    - Verificato con `tinker`: 3 brani inseriti, `instrument->label()` restituisce "Basso".
-3. **Rotte e controller**: `SongController` resource, Form Request `SongRequest`.
+3. **Rotte e controller** ✅ *(completata il 24/11/2026)*: `SongController` resource, Form Request `SongRequest`.
+   - `download` risponde 501 finché non viene implementato nella tappa 5; messaggi flash e ricerca arrivano nella tappa 6.
 4. **Viste**: layout, elenco, form (create/edit), anteprima.
 5. **Export Word**: servizio `TabDocxGenerator` e azione `download`.
 6. **Rifiniture**: messaggi flash, conferma di eliminazione, ricerca per titolo/artista nell'elenco, traduzioni in italiano.
