@@ -12,7 +12,7 @@
 | # | Tappa | Stato | Cosa produce |
 |---|---|---|---|
 | 1 | Setup | ✅ Completata | Progetto Laravel 13 pulito + PHPWord |
-| 2 | Database | ⬜ Da fare | Tabella `songs`, modello `Song`, Enum `Instrument`, dati di prova |
+| 2 | Database | ✅ Completata | Tabella `songs`, modello `Song`, Enum `Instrument`, dati di prova |
 | 3 | Rotte e controller | ⬜ Da fare | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ⬜ Da fare | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ⬜ Da fare | Servizio `TabDocxGenerator`, download del `.docx` |
@@ -33,11 +33,11 @@ Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
 
 ---
 
-## Tappa 2 – Database
+## Tappa 2 – Database ✅
 
 **Obiettivo:** avere nel database SQLite la tabella dei brani e qualche brano di prova.
 
-**Cosa impari:** migration, modelli Eloquent, `$fillable`, cast, Enum PHP, seeder.
+**Cosa impari:** migration, modelli Eloquent, attributo `#[Fillable]`, cast, Enum PHP, seeder.
 
 **Comandi**
 ```powershell
@@ -54,15 +54,20 @@ php artisan db:seed
 | File | Contenuto |
 |---|---|
 | `database/migrations/xxxx_create_songs_table.php` | Campi della tabella (sezione 4 delle specifiche) |
-| `app/Models/Song.php` | `$fillable` e cast di `instrument` all'Enum |
+| `app/Models/Song.php` | Attributo `#[Fillable]` e cast di `instrument` all'Enum |
 | `app/Enums/Instrument.php` | Casi `Bass` / `Guitar` e metodo `label()` |
 | `database/seeders/SongSeeder.php` | 2–3 brani con tabulature **inventate** |
-| `database/seeders/DatabaseSeeder.php` | Chiama `SongSeeder` |
+| `database/seeders/DatabaseSeeder.php` | Chiama solo `SongSeeder` (tolto l'utente di prova) |
+
+**Avanzamento**
+- [x] `make:model Song -m -s` e `make:enum Enums/Instrument --string` eseguiti
+- [x] File compilati: migration, modello, Enum, `SongSeeder`, `DatabaseSeeder`
+- [x] `php artisan migrate` e `php artisan db:seed`
 
 **Fatto quando**
-- [ ] La migration gira senza errori
-- [ ] `php artisan tinker` → `App\Models\Song::count()` restituisce il numero dei brani di prova
-- [ ] `App\Models\Song::first()->instrument->label()` restituisce "Basso" o "Chitarra"
+- [x] La migration gira senza errori
+- [x] `php artisan tinker` → `App\Models\Song::count()` restituisce il numero dei brani di prova (`3`)
+- [x] `App\Models\Song::first()->instrument->label()` restituisce "Basso" o "Chitarra" (`"Basso"`)
 
 ---
 

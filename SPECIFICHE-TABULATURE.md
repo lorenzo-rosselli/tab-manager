@@ -79,8 +79,9 @@ React, Vue, Livewire, Inertia, starter kit con autenticazione, MySQL/PostgreSQL.
 | `created_at` / `updated_at` | `timestamps()` | auto | — |
 
 ### Modello `App\Models\Song`
-- `$fillable`: `title`, `artist`, `instrument`, `tuning`, `tab`, `notes`
-- (Opzionale) un Enum PHP `App\Enums\Instrument` con i casi `Bass = 'bass'` e `Guitar = 'guitar'` e un metodo `label()` che restituisce "Basso" / "Chitarra". Il campo va poi castato nel modello.
+- Campi compilabili: `title`, `artist`, `instrument`, `tuning`, `tab`, `notes`. Si dichiarano con l'attributo `#[Fillable([...])]` sopra la classe, lo stile di Laravel 13 (equivalente alla vecchia proprietà `$fillable`).
+- Enum PHP `App\Enums\Instrument` (adottato) con i casi `Bass = 'bass'` e `Guitar = 'guitar'` e un metodo `label()` che restituisce "Basso" / "Chitarra". Il campo `instrument` è castato all'Enum nel metodo `casts()` del modello.
+- Le tabelle predefinite di Laravel (`users`, `sessions`, `cache`, `jobs`…) restano: servono al framework. Il `DatabaseSeeder` però non crea più l'utente di prova e chiama solo `SongSeeder`.
 
 ### Valori predefiniti dell'accordatura (suggeriti nel form)
 - Basso 4 corde: `E A D G`
@@ -179,6 +180,7 @@ E|--5--------------|--5--------------|
 ```
 
 Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (non di brani reali protetti), per provare l'app.
+`SongSeeder` contiene tre esercizi inventati (artista "Esercizi Tab Manager"): basso 4 corde, basso 5 corde e chitarra.
 
 ---
 
@@ -188,7 +190,8 @@ Va creato un **Seeder** con 2–3 brani di esempio, con tabulature inventate (no
    - Poiché la cartella `Tab Manager` conteneva già il repository git, il progetto è stato creato in una cartella temporanea e poi spostato dentro `Tab Manager`, mantenendo `README.md`, `SPECIFICHE-TABULATURE.md` e il collegamento a GitHub. Il `.gitignore` è quello di Laravel 13.
    - Versioni installate: Laravel Framework 13.44.1, `phpoffice/phpword` 1.4.0 (con la dipendenza `phpoffice/math` 0.3.0).
    - `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it` (i file di traduzione italiani arrivano nella tappa 6).
-2. **Database**: migration `songs`, modello `Song`, (Enum `Instrument`), seeder con dati di prova.
+2. **Database** ✅ *(completata il 24/11/2026)*: migration `songs`, modello `Song`, Enum `Instrument`, seeder con dati di prova.
+   - Verificato con `tinker`: 3 brani inseriti, `instrument->label()` restituisce "Basso".
 3. **Rotte e controller**: `SongController` resource, Form Request `SongRequest`.
 4. **Viste**: layout, elenco, form (create/edit), anteprima.
 5. **Export Word**: servizio `TabDocxGenerator` e azione `download`.
