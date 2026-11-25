@@ -559,15 +559,21 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 | `desktop/setup.ps1` | Nuovo: installazione e aggiornamento |
 | `desktop/install-shortcut.ps1` | `-ExecutionPolicy Bypass` nel collegamento |
 | `.gitattributes` | CRLF per `.cmd` e `.ps1` |
+| `desktop/tab-manager.ps1` | Usa prima il PHP di php.new |
 | `README.md` | Istruzioni di installazione, aggiornamento e problemi comuni |
 
 **Verifiche fatte in fase di sviluppo**
 - [x] Script senza errori di sintassi (parser di PowerShell 7); `.cmd` solo con caratteri ASCII e CRLF
 - [x] Creazione del `.env` dal vero `.env.example`: `DB_DATABASE` al posto giusto, percorso con spazi tra apici, chiave vuota riconosciuta
 
+**Prima prova (PC con un altro PHP già installato)**
+- `composer install` fallito con codice 2: lo script aveva trovato e usato il PHP già presente (non adatto: versione o estensioni), invece di installare quello di php.new.
+- Correzione: l'app usa **sempre il PHP di php.new** (`%USERPROFILE%\.config\herd-lite\bin`), che php.new installa nella sua cartella senza toccare l'altro PHP. `setup.ps1` lo installa se manca, anche se c'è un altro PHP, e mette la sua cartella per prima nel PATH (solo durante l'installazione). Anche `tab-manager.ps1` usa prima quel PHP. Controllo della versione portato a **8.4**, la minima richiesta dalle librerie di `composer.lock` (prima era 8.3).
+
 **Avanzamento**
 - [x] Codice scritto
-- [ ] Commit e push
+- [x] Commit e push
+- [ ] Nuova prova sul PC con l'altro PHP (scaricare di nuovo lo ZIP o sostituire `desktop\setup.ps1` e `desktop\tab-manager.ps1`)
 - [ ] Prova su un PC (o un account Windows) senza PHP e Node: ZIP sbloccato, installazione, collegamento, aggiornamento con un nuovo ZIP
 
 ---

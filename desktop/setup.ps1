@@ -3,7 +3,11 @@
 | Tab Manager – installazione e aggiornamento (lo avvia "Installa Tab Manager.cmd")
 |--------------------------------------------------------------------------
 | Prepara tutto ciò che serve per usare l'app su questo computer:
-|  1. PHP e Composer, se mancano (con php.new, come nella documentazione di Laravel);
+|  1. PHP e Composer di php.new (come nella documentazione di Laravel), se mancano. Tab Manager usa
+|     sempre questo PHP, anche se sul computer ce n'è già un altro (per esempio quello di XAMPP):
+|     php.new lo installa nella sua cartella (%USERPROFILE%\.config\herd-lite\bin) senza toccare
+|     l'altro, e per i comandi di questa installazione la sua cartella viene messa per prima nel PATH.
+|     Così le due versioni non vanno in conflitto;
 |  2. Node.js, se manca (con winget, già presente in Windows 11);
 |  3. le librerie PHP (composer install) e JavaScript (npm install);
 |  4. l'interfaccia compilata (npm run build);
@@ -30,13 +34,14 @@ function Write-Step([string] $text) {
     Write-Host "==> $text" -ForegroundColor Cyan
 }
 
-# Rilegge il PATH di sistema e dell'utente (i programmi appena installati lo modificano).
+# Rilegge il PATH di sistema e dell'utente (i programmi appena installati lo modificano) e mette
+# per prima la cartella del PHP di php.new: "php" e "composer" sono sempre quelli, anche se nel
+# PATH c'è un altro PHP. Vale solo per questa installazione, non cambia le impostazioni del PC.
 function Update-Path {
-    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
-        [Environment]::GetEnvironmentVariable('Path', 'User')
-    if ((Test-Path $herdBin) -and ($env:Path -notlike "*$herdBin*")) {
-        $env:Path = "$herdBin;$env:Path"
-    }
+    $paths = ([Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+        [Environment]::GetEnvironmentVariable('Path', 'User')) -split ';' |
+        Where-Object { $_ -and ($_.TrimEnd('\') -ne $herdBin) }
+    $env:Path = (@($herdBin) + $paths) -join ';'
 }
 
 function Test-Command([string] $name) {
@@ -72,24 +77,26 @@ try {
 
     Update-Path
 
-    # 1. PHP e Composer
-    if (-not (Test-Command 'php') -or -not (Test-Command 'composer')) {
-        Write-Step 'Installo PHP e Composer (php.new)...'
+    # 1. PHP e Composer di php.new (anche se sul computer c'è già un altro PHP)
+    $herdPhp = Join-Path $herdBin 'php.exe'
+    if (-not (Test-Path $herdPhp) -or -not (Test-Command 'composer')) {
+        Write-Step 'Installo PHP e Composer (php.new), accanto a eventuali altre versioni di PHP...'
         # Comando ufficiale di php.new, in un PowerShell separato.
         $phpNew = "Set-ExecutionPolicy Bypass -Scope Process -Force; " +
             "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; " +
             "iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))"
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command $phpNew
         Update-Path
-        if (-not (Test-Command 'php') -or -not (Test-Command 'composer')) {
+        if (-not (Test-Path $herdPhp) -or -not (Test-Command 'composer')) {
             throw "Non sono riuscito a installare PHP e Composer.`nInstallali da https://php.new e rilancia l'installazione."
         }
     }
-    & php -r "exit(version_compare(PHP_VERSION, '8.3.0', '<') ? 1 : 0);"
+    # Le librerie del progetto chiedono PHP 8.4 o più recente.
+    & $herdPhp -r "exit(version_compare(PHP_VERSION, '8.4.0', '<') ? 1 : 0);"
     if ($LASTEXITCODE -ne 0) {
-        throw "Serve PHP 8.3 o più recente (trovato: $(& php -r 'echo PHP_VERSION;')).`nAggiornalo con https://php.new e rilancia l'installazione."
+        throw "Serve PHP 8.4 o più recente (trovato: $(& $herdPhp -r 'echo PHP_VERSION;')).`nAggiornalo rilanciando il comando di https://php.new e poi rilancia l'installazione."
     }
-    Write-Host "PHP $(& php -r 'echo PHP_VERSION;')"
+    Write-Host "PHP $(& $herdPhp -r 'echo PHP_VERSION;') ($herdPhp)"
 
     # 2. Node.js (serve solo per compilare l'interfaccia)
     if (-not (Test-Command 'npm.cmd')) {

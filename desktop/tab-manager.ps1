@@ -46,12 +46,13 @@ function Test-Window {
 }
 
 try {
-    # PHP: quello nel PATH, altrimenti quello installato da php.new (Herd Lite).
-    $php = Get-Command php -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
-    if (-not $php) {
-        $php = Join-Path $env:USERPROFILE '.config\herd-lite\bin\php.exe'
-    }
+    # PHP: quello installato da php.new (Herd Lite), anche se sul computer c'è un altro PHP;
+    # solo se manca, quello nel PATH. Così altre versioni di PHP non vanno in conflitto con l'app.
+    $php = Join-Path $env:USERPROFILE '.config\herd-lite\bin\php.exe'
     if (-not (Test-Path $php)) {
+        $php = Get-Command php -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source
+    }
+    if (-not $php -or -not (Test-Path $php)) {
         throw "PHP non trovato.`nInstallalo con php.new oppure aggiungilo al PATH."
     }
 
