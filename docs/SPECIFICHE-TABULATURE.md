@@ -42,7 +42,7 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database`, `lang`, `public`, `resources`, `routes`, `storage`, `tests`), che restano dove Laravel se le aspetta:
 - `docs/`: i documenti di progetto, `SPECIFICHE-TABULATURE.md` (questo file) e `TABELLA-DI-MARCIA.md`;
 - `windows/`: gli script per Windows, cioè avvio in finestra dedicata, collegamenti e installazione (vedi "Avvio come app desktop");
-- nella cartella principale: `README.md` (istruzioni per chi installa l'app, mostrate da GitHub), `Installa Tab Manager.cmd` (il file da cliccare per installare o aggiornare) e il collegamento `Tab Manager.lnk` (creato dall'installazione, non su git).
+- nella cartella principale: `README.md` (istruzioni per chi installa l'app, mostrate da GitHub), `Installa Tab Manager.cmd` (il file da cliccare per installare o aggiornare), `Disinstalla Tab Manager.cmd` (il file da cliccare per disinstallare) e il collegamento `Tab Manager.lnk` (creato dall'installazione, non su git).
 
 ### Note sull'ambiente (problemi già risolti)
 - **Smart App Control** blocca i `php.exe` scaricati a mano da windows.php.net (errore "bloccato dai criteri di Device Guard"). Il PHP installato con php.new invece funziona. Non si possono aggiungere eccezioni per singole app.
@@ -55,7 +55,7 @@ Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database
 ### Avvio come app desktop (finestra dedicata)
 Per l'uso di tutti i giorni l'app si apre dal collegamento **"Tab Manager"** (sul desktop e nella cartella del progetto), senza terminali: una finestra tutta sua, senza barra degli indirizzi, schede o menu, con titolo e icona di Tab Manager (anche nella barra delle applicazioni).
 - **Perché non un programma compilato** (per esempio con NativePHP/Electron): un eseguibile costruito da noi non sarebbe firmato e Smart App Control lo bloccherebbe. Si usa invece Microsoft Edge, già installato e firmato, in "modalità app" (`--app=`), che mostra solo la pagina. Nessuna libreria in più.
-- File nella cartella `windows/` del progetto (oltre a `setup.ps1`, vedi "Installazione su un altro computer"):
+- File nella cartella `windows/` del progetto (oltre a `setup.ps1` e `uninstall.ps1`, vedi "Installazione su un altro computer" e "Disinstallazione"):
   - `tab-manager.ps1`: script di avvio. Usa il PHP di php.new (`%USERPROFILE%\.config\herd-lite\bin\php.exe`) anche se sul computer c'è un altro PHP, e solo se manca quello nel PATH; trova Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server. Se il server è già acceso (seconda finestra), apre solo la finestra. Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
   - `install-shortcut.ps1`: crea il collegamento `Tab Manager.lnk` sul desktop e nella cartella del progetto (da eseguire una volta, e di nuovo se si sposta la cartella del progetto, con `powershell -NoProfile -File windows\install-shortcut.ps1`: funziona sia da PowerShell sia dal Prompt dei comandi, dove scrivere solo il nome del file `.ps1` lo aprirebbe nel Blocco note). Il collegamento lancia `conhost.exe --headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\tab-manager.ps1`, cioè lo script senza nessuna finestra del terminale (`-ExecutionPolicy Bypass` vale solo per quell'avvio: l'app parte anche dove PowerShell non esegue script, impostazione predefinita `Restricted`), con l'icona `windows\tab-manager.ico`. Il collegamento contiene percorsi assoluti di questo computer, quindi quello nella cartella del progetto è nel `.gitignore` (`/Tab Manager.lnk`);
   - `tab-manager.ico`: l'icona (16–256 px).
@@ -76,6 +76,18 @@ Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (i
 - `composer install`, `php artisan key:generate` (solo se manca la chiave), `npm install`, `npm run build`;
 - **database**: se il file non esiste lo crea, poi `migrate --force` e `db:seed --force` (i tre brani di prova); se esiste, solo `migrate --force` (i brani restano);
 - esegue `install-shortcut.ps1` e apre l'app dal collegamento.
+
+### Disinstallazione
+Doppio clic su **`Disinstalla Tab Manager.cmd`** (nella cartella principale): avvia `windows\uninstall.ps1` come l'installatore avvia `setup.ps1` (`-ExecutionPolicy Bypass` solo per quell'avvio, `pause` alla fine). Lo script:
+- chiede conferma (S/N) prima di fare qualsiasi cosa;
+- chiude l'app se è aperta: i processi di Edge con il profilo `%LOCALAPPDATA%\TabManager\Edge` e il server PHP sulla porta 8765;
+- cancella i collegamenti `Tab Manager.lnk` sul desktop e nella cartella dell'app (quello sul desktop solo se è davvero di Tab Manager, cioè se lancia `tab-manager.ps1`);
+- cancella il profilo di Edge dell'app (riprova per qualche secondo se Edge tiene ancora i file aperti);
+- **archivio delle tabulature**: lo trova come `setup.ps1` (da `DB_DATABASE` nel `.env`, altrimenti `database\database.sqlite`). Se è fuori dalla cartella dell'app lo cancella **solo se l'utente scrive SI**, dopo un avviso che le tabulature vanno perse; con Invio resta, e una nuova installazione lo ritrova. Se è dentro la cartella dell'app, se ne va con lei. La cartella `%LOCALAPPDATA%\TabManager` viene tolta se resta vuota;
+- **non** cancella la cartella dell'app (uno script non può cancellare la cartella da cui è in esecuzione, e sul computer di sviluppo è il progetto con git): alla fine la apre in Esplora file, già selezionata, da cancellare a mano;
+- **non** disinstalla PHP, Composer (php.new) e Node.js, che possono servire ad altri programmi. Il `README.md` spiega come toglierli a mano: cartella `%USERPROFILE%\.config\herd-lite` e la sua voce nel PATH dell'utente; Node.js da Impostazioni → App oppure `winget uninstall OpenJS.NodeJS.LTS`.
+
+Nient'altro resta sul computer: l'app non crea servizi, voci nel registro o avvii automatici.
 
 In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anche nello ZIP di GitHub): `cmd.exe` e PowerShell 5.1 le vogliono così.
 

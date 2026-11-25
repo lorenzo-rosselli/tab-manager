@@ -23,6 +23,17 @@ I brani vengono salvati in `%LOCALAPPDATA%\TabManager\database.sqlite`, fuori da
 
 Scarica il nuovo ZIP, sbloccalo ed estrailo (anche al posto della cartella vecchia), poi doppio clic su **`Installa Tab Manager.cmd`**. I brani restano.
 
+## Disinstallare
+
+1. Nella cartella dell'app, doppio clic su **`Disinstalla Tab Manager.cmd`** e conferma con **S**.
+   Chiude l'app e cancella i collegamenti **Tab Manager**.
+2. Ti chiede se cancellare anche l'**archivio delle tabulature**: scrivi **SI** per cancellarlo (le tabulature vanno perse), oppure premi **Invio** per tenerlo. Se lo tieni e reinstalli, ritrovi i brani com'erano.
+3. Alla fine si apre Esplora file con la cartella dell'app selezionata: chiudi la finestra nera e **cancella la cartella**.
+
+PHP, Composer e Node.js restano installati, perché possono servire ad altri programmi. Se vuoi toglierli:
+- **PHP e Composer**: cancella la cartella `%USERPROFILE%\.config\herd-lite` (incolla il percorso nella barra di Esplora file), poi menu Start → **Modifica le variabili d'ambiente relative al tuo account** → **Path** → Modifica → togli la riga che finisce con `\.config\herd-lite\bin`;
+- **Node.js**: Impostazioni → App → App installate → **Node.js** → Disinstalla.
+
 ## Se qualcosa non va
 
 - **Non si apre niente cliccando `Installa Tab Manager.cmd`, oppure Windows dice che è stato bloccato**: lo ZIP non era stato sbloccato. Cancella la cartella estratta e ripeti dal punto 2.

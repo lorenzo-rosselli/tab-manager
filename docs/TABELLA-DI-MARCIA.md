@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -599,6 +599,26 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 - [x] Pulizia e spostamenti fatti
 - [ ] Rilanciare `Installa Tab Manager.cmd`: ricrea i collegamenti (quelli vecchi puntano a `desktop\`) e rifà `npm run build`
 - [ ] Commit (git vedrà gli spostamenti come rinomine)
+
+### Parte 12 – Disinstallazione (25/11/2026) 🔄
+
+**Richiesta**
+32. Poter **disinstallare** l'app.
+
+**Fatto**
+- Nuovo **`Disinstalla Tab Manager.cmd`** nella cartella principale, accanto all'installatore: avvia `windows/uninstall.ps1`.
+- `windows/uninstall.ps1` (UTF-8 con BOM, CRLF):
+  - chiede conferma;
+  - chiude l'app (Edge con il profilo di Tab Manager e server PHP sulla porta 8765);
+  - cancella i due collegamenti e il profilo di Edge;
+  - cancella l'archivio delle tabulature solo se l'utente scrive SI; altrimenti resta per una reinstallazione.
+- Restano apposta la cartella dell'app (da cancellare a mano: lo script la apre in Esplora file) e PHP, Composer e Node.js.
+- `README.md`: nuova sezione "Disinstallare", con anche come togliere PHP e Node.js a mano. Specifiche: nuova sezione "Disinstallazione".
+
+**Avanzamento**
+- [x] Script, README e specifiche
+- [ ] Prova su Windows: annullare con N; disinstallare tenendo l'archivio e reinstallare (i brani ci sono ancora); disinstallare cancellando l'archivio
+- [ ] Commit
 
 ---
 
