@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Collegamento all'app desktop (percorsi assoluti di questo computer: lo crea desktop/install-shortcut.ps1)
+/Tab Manager.lnk

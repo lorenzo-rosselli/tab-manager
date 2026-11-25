@@ -10,12 +10,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Brani') – {{ config('app.name') }}</title>
+    {{-- Icona dell'app (scheda del browser, finestra dedicata e barra delle applicazioni) --}}
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
     <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-950">
         <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-            <a href="{{ route('songs.index') }}" class="text-xl font-semibold text-gray-900 dark:text-white">{{ config('app.name') }}</a>
+            <a href="{{ route('songs.index') }}" class="flex items-center gap-3 text-xl font-semibold text-gray-900 dark:text-white">
+                @include('icons.logo')
+                {{ config('app.name') }}
+            </a>
 
             <div class="flex items-center gap-3">
                 {{--

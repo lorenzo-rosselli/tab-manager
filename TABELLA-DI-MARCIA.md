@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -448,6 +448,91 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 **Avanzamento**
 - [x] Codice scritto
 - [ ] Verifica nel browser (ricaricare la pagina con `npm run dev` attivo)
+
+### Parte 8 – Pagine A4 e interruzione di pagina (25/11/2026) 🔄
+
+**Richieste**
+25. Il foglio deve mostrare che il testo è scritto **su più pagine** (prima era un foglio potenzialmente infinito).
+26. Poter inserire un'**interruzione di pagina**.
+
+**Soluzioni valutate**
+1. Linee "fine pagina" su un foglio continuo: semplice, ma il testo ci passa sopra e non si vedono i margini.
+2. **Pagine separate come in Word** (scelta): l'editor resta uno solo, le pagine si calcolano misurando i paragrafi.
+3. **Interruzione di pagina manuale** (scelta, insieme alla 2).
+- Scartata l'estensione "Pages" di Tiptap: è a pagamento.
+
+**Decisioni**
+- Nuovo modulo `resources/js/tab-pages.js`, usato dall'editor e dall'anteprima: `paginate()` (dove servono gli spazi e quante pagine), `drawPages()` (pagine bianche dietro al testo), `spacer()`. Pagina 29,7 cm, margini 2 cm, zona scrivibile 25,7 cm, 1 cm tra le pagine.
+- Si va a pagina nuova per **paragrafo intero**: una riga di tabulatura non viene mai spezzata. Un paragrafo più alto di una pagina resta dov'è.
+- Nell'editor gli spazi sono **decorazioni** di Tiptap (plugin `pagination`): non entrano nel JSON né nel Word; si ricalcolano dopo ogni modifica, quando arrivano i font e quando cambia la finestra, e si aggiornano solo se cambiano.
+- Nell'anteprima (`data-paginate`) gli spazi sono `<div>` inseriti dallo script; le pagine sono pulite (niente bordo tratteggiato).
+- Interruzione di pagina: nuovo nodo `pageBreak` nel JSON; pulsante in fondo alla barra (nuova icona `page-break`) e Ctrl+Invio. Come in Word il testo dopo il cursore va sulla pagina nuova; a fine riga si crea un paragrafo vuoto. Nell'editor si vede come riga tratteggiata con la scritta "Interruzione di pagina".
+- Nel Word: il paragrafo dopo l'interruzione ha `pageBreakBefore` ("Anteponi interruzione di pagina"); `addPageBreak()` avrebbe lasciato una riga vuota in cima alla pagina. Due interruzioni di fila danno una pagina vuota; un'interruzione in fondo al foglio viene ignorata.
+- Interlinea del foglio da 1.15 a `normal` (quella del font), per avvicinarsi all'interlinea singola del Word e quindi ai suoi salti pagina. Da verificare confrontando una tabulatura lunga con il Word.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `resources/js/tab-pages.js` | Nuovo: calcolo e disegno delle pagine; impaginazione dell'anteprima |
+| `resources/js/tab-editor.js` | Nodo `pageBreak` (comando `setPageBreak`, Ctrl+Invio); plugin `pagination` con le decorazioni |
+| `vite.config.js` | Nuovo ingresso `resources/js/tab-pages.js` |
+| `resources/css/app.css` | Interlinea `normal`; classi `.tab-paper`, `.tab-paper-pages`, `.tab-page`, `.tab-page-spacer`, `.tab-page-break` |
+| `resources/views/songs/_form.blade.php` | Contenitore delle pagine; pulsante Interruzione di pagina |
+| `resources/views/songs/show.blade.php` | Contenitore delle pagine con `data-paginate`; `@vite` di `tab-pages.js` |
+| `resources/views/icons/page-break.blade.php` | Nuova icona |
+| `app/Services/TabDocument.php` | `pageBreakBefore` in `paragraphs()`; `<div class="tab-page-break">` in `toHtml()` |
+| `app/Services/TabDocxGenerator.php` | `pageBreakBefore` sui paragrafi del Word |
+
+**Verifiche fatte in fase di sviluppo**
+- [x] `paginate()` (jsdom, altezze simulate di 20 px per riga): 60 righe → 48 sulla prima pagina e spazio di 200 px, 2 pagine; con un'interruzione la riga successiva va a pagina nuova; nessuno spazio né decorazione nel JSON
+- [x] Interruzione di pagina: a metà riga il testo si divide e il cursore va sulla pagina nuova; a fine riga si crea un paragrafo vuoto con il cursore
+- [x] Anteprima (jsdom): pagina nuova dopo l'interruzione, 2 pagine
+- [x] PHP: `pageBreakBefore` corretto, due interruzioni di fila = pagina vuota, interruzione finale ignorata, `hasText()` falso con sole interruzioni; PHPWord scrive `w:pageBreakBefore`
+- [x] `tab-editor.js` si compila (bundle di prova con esbuild)
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Riavvio di `npm run dev` (nuovo ingresso in `vite.config.js`)
+- [ ] Verifica nel browser e confronto dei salti pagina con il Word
+
+### Parte 9 – Icona e avvio come app desktop (25/11/2026) 🔄
+
+**Richieste**
+27. Un'**icona sul desktop** che apre l'app in una **finestra dedicata**, non nel browser.
+28. Un'**icona dell'app**, mostrata anche nell'intestazione, prima del nome "Tab Manager".
+
+**Soluzioni valutate**
+- A. **Edge in "modalità app" avviato da uno script PowerShell** (scelta): finestra senza barra degli indirizzi, schede e menu; nessuna libreria.
+- B. NativePHP (Electron con PHP incluso): un programma vero, ma il nostro eseguibile non sarebbe firmato e Smart App Control lo bloccherebbe; inoltre è una dipendenza molto pesante.
+
+**Decisioni**
+- Script in `desktop/`: `tab-manager.ps1` (server PHP integrato sulla porta 8765 + finestra di Edge con profilo dedicato; spegne il server alla chiusura) e `install-shortcut.ps1` (crea `Tab Manager.lnk` sul desktop e nella cartella del progetto; quest'ultimo nel `.gitignore`, perché contiene percorsi assoluti).
+- Server: `php -S` dalla cartella `public` con il router di Laravel, come `php artisan serve`, ma un solo processo, quindi si spegne in modo pulito. Porta 8765, diversa dalla 8000 dello sviluppo.
+- Il collegamento usa `conhost.exe --headless`: nessuna finestra del terminale, neanche per un attimo. Errori in una finestra di messaggio.
+- Lo script toglie un `public/hot` rimasto da un `npm run dev` chiuso male; senza `public/build` chiede di eseguire `npm run build`.
+- Script in UTF-8 con BOM (Windows PowerShell 5.1).
+- Per creare il collegamento si usa `powershell -NoProfile -File desktop\install-shortcut.ps1`: dal Prompt dei comandi `.\desktop\install-shortcut.ps1` apre il file nel Blocco note invece di eseguirlo (successo alla prima prova).
+- Icona disegnata per l'app: quadrato arancione arrotondato, quattro corde e i numeri 3-5-7 come in una tablatura (scartate una versione con pallini, troppo simile all'icona delle impostazioni, e una con il plettro, che sembrava un segnaposto della mappa). Cifre convertite in tracciati. Usata come logo nell'intestazione, favicon e icona del collegamento.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `desktop/tab-manager.ps1` | Nuovo: avvio dell'app in finestra dedicata |
+| `desktop/install-shortcut.ps1` | Nuovo: crea il collegamento sul desktop e nella cartella del progetto |
+| `.gitignore` | `/Tab Manager.lnk` |
+| `desktop/tab-manager.ico` | Nuovo: icona del collegamento (16–256 px) |
+| `public/favicon.svg`, `public/favicon.ico` | Icona dell'app (prima `favicon.ico` era vuota) |
+| `resources/views/icons/logo.blade.php` | Nuovo: logo per l'intestazione |
+| `resources/views/layouts/app.blade.php` | `<link rel="icon">`; logo prima del nome nell'intestazione |
+
+**Verifiche fatte in fase di sviluppo**
+- [x] Icona controllata a 16, 24, 32, 64 e 128 px su sfondo chiaro e scuro
+- [x] Script PowerShell senza errori di sintassi (parser di PowerShell 7); controllo della porta e lettura dell'indirizzo di Vite anche in IPv6 (`[::1]`)
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] `npm run build`
+- [ ] `powershell -NoProfile -File desktop\install-shortcut.ps1` e prova del collegamento (apertura, icona nella barra delle applicazioni, chiusura = server spento)
 
 ---
 
