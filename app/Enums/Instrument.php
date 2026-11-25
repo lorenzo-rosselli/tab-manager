@@ -6,6 +6,7 @@ enum Instrument: string
 {
     case Bass = 'bass';
     case Guitar = 'guitar';
+    case Voice = 'voice';
 
     /**
      * Nome dello strumento in italiano, da mostrare nelle pagine e nel .docx.
@@ -15,6 +16,7 @@ enum Instrument: string
         return match ($this) {
             self::Bass => 'Basso',
             self::Guitar => 'Chitarra',
+            self::Voice => 'Voce',
         };
     }
 }

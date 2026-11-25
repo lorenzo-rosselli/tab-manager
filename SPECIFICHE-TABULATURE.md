@@ -12,7 +12,7 @@
 L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scrive o le incolla su un **foglio** che è già il documento Word finale (stessa pagina, stessa formattazione), e l'app lo archivia e lo esporta in .docx, pronto da stampare o da modificare.
 
 ### Obiettivi
-- Essere **snella e leggerissima**: poche pagine, nessun framework JavaScript (solo un editor di testo per il foglio e poche righe per il tema), nessun servizio esterno.
+- Essere **snella e leggerissima**: poche pagine, nessun framework JavaScript (solo un editor di testo per il foglio e poche righe per il tema e il tasto Esc), nessun servizio esterno.
 - Usare un solo utente, sul proprio computer, senza login.
 - Servire anche come **progetto di studio** per imparare le basi di Laravel.
 
@@ -54,7 +54,7 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 | Backend | **Laravel 13** su PHP 8.5 | Rotte, controller, validazione, Eloquent |
 | Frontend | **Blade** + **Tailwind CSS 4** (via Vite) | HTML generato dal server, già incluso nel progetto Laravel. Tema chiaro e scuro, con interruttore |
 | Editor del foglio | **Tiptap 3** (`@tiptap/core`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-style`, `@tiptap/extension-text-align`, `@tiptap/extension-highlight`; licenza MIT) | Editor di testo ricco, installato con npm e caricato da Vite solo nelle pagine del form (`resources/js/tab-editor.js`) |
-| JavaScript | Nessun'altra libreria | Oltre all'editor, solo `resources/js/app.js` (poche righe) per l'interruttore del tema. Tutto il resto (ordinamento, riga cliccabile, modale di conferma) funziona senza JavaScript |
+| JavaScript | Nessun'altra libreria | Oltre all'editor, solo `resources/js/app.js` (poche righe) per l'interruttore del tema e il tasto Esc nell'anteprima. Tutto il resto (ordinamento, riga cliccabile, modale di conferma) funziona senza JavaScript |
 | Database | **SQLite** | File unico `database/database.sqlite`, predefinito in Laravel |
 | Export Word | **PHPWord** (`phpoffice/phpword`) | Unica dipendenza PHP aggiuntiva |
 | Test | **Pest** | Predefinito in Laravel |
@@ -183,7 +183,7 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
   - messaggi per elenco vuoto e per ricerca senza risultati.
 - `songs/_delete.blade.php`: icona cestino + **finestra modale di conferma** fatta con l'**API Popover** di HTML (`popover` + `popovertarget`), senza JavaScript. Il testo è "Artista - Titolo verrà eliminato definitivamente."; si chiude con l'icona Annulla, con Esc o cliccando fuori; il form DELETE parte solo dal pulsante di conferma. Il pannello è centrato con `m-auto h-fit` (il reset CSS di Tailwind azzera il `margin: auto` dei popover). Richiede un browser recente (Chrome/Edge 114+, Firefox 125+, Safari 17+). Usata nell'elenco e nell'anteprima.
 - `songs/create.blade.php` e `songs/edit.blade.php`: contengono il `<form>` (POST, oppure PUT con `@method('PUT')`) e includono il partial `songs/_form.blade.php`.
-- `songs/show.blade.php`: titolo, artista, riga "Strumento: … – Gruppo: …" (il gruppo solo se presente), icone Scarica .docx / Modifica / Elimina, e il **foglio** su una pagina A4 come nel form, con l'HTML di `TabDocument::toHtml()`. In fondo l'icona "Torna all'elenco".
+- `songs/show.blade.php`: titolo, artista, riga "Strumento: … – Gruppo: …" (il gruppo solo se presente), icone Scarica .docx / Modifica / Elimina, e il **foglio** su una pagina A4 come nel form, con l'HTML di `TabDocument::toHtml()`. In fondo l'icona "Torna all'elenco". **Tasto Esc**: torna all'elenco. L'indirizzo è nell'attributo `data-escape-to` e il tasto è gestito da `resources/js/app.js`; se è aperta la modale di eliminazione, Esc chiude solo quella.
 - `icons/*.blade.php`: icone SVG scritte direttamente nell'HTML, incluse con `@include('icons.nome')`, senza pacchetti: `plus`, `pencil`, `download`, `trash`, `save`, `x-mark`, `arrow-left`, `magnifying-glass`, `chevron-up`, `chevron-down`, `align-left`, `align-center`, `align-right`, `highlighter`, `sun`, `moon`. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` e l'evidenziatore `highlighter` vengono da Lucide (licenza ISC), con lo spessore portato a 1.5; le icone di allineamento sono disegnate sul modello delle Heroicons "bars".
 - `resources/css/app.css`: oltre a Tailwind, la classe `.tab-sheet` del foglio (editor e anteprima): Lucida Console 10 pt, interlinea 1.15, testo scuro, `white-space: pre-wrap` (gli spazi restano), paragrafi senza margini, editor alto almeno una pagina.
 

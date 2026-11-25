@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Instrument;
 use App\Services\TabDocument;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SongRequest extends FormRequest
 {
@@ -32,7 +34,8 @@ class SongRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'artist' => ['required', 'string', 'max:255'],
             'band' => ['nullable', 'string', 'max:255'],
-            'instrument' => ['required', 'in:bass,guitar'],
+            // Valori ammessi: quelli dell'Enum Instrument (bass, guitar, voice), letti dall'Enum stesso.
+            'instrument' => ['required', Rule::in(array_column(Instrument::cases(), 'value'))],
             'show_instrument' => ['required', 'boolean'],
             'show_band' => ['required', 'boolean'],
             // Il foglio arriva come testo JSON (lo scrive l'editor in un campo nascosto)

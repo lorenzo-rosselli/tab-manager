@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('title', 255);
             $table->string('artist', 255);
             $table->string('band', 255)->nullable();                // gruppo con cui si suona il brano (facoltativo)
-            $table->string('instrument', 10);                       // 'bass' oppure 'guitar'
+            $table->string('instrument', 10);                       // 'bass', 'guitar' o 'voice'
             $table->boolean('show_instrument')->default(false);     // scrivere lo strumento sotto il titolo del foglio
             $table->boolean('show_band')->default(false);           // scrivere il gruppo sotto il titolo del foglio
             $table->longText('tab');                                // il foglio: documento formattato in JSON (Tiptap)

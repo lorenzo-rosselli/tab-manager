@@ -36,8 +36,8 @@ class SongController extends Controller
         $search = trim((string) $request->query('q', ''));
         $sorts = $this->parseSorts((string) $request->query('sort', ''));
 
-        // Nel database lo strumento è salvato come "bass"/"guitar": si cerca il testo nei nomi italiani
-        // ("Basso", "Chitarra") e si filtra sui valori corrispondenti.
+        // Nel database lo strumento è salvato come "bass"/"guitar"/"voice": si cerca il testo nei nomi italiani
+        // ("Basso", "Chitarra", "Voce") e si filtra sui valori corrispondenti.
         $instruments = collect(Instrument::cases())
             ->filter(fn (Instrument $instrument) => str_contains(mb_strtolower($instrument->label()), mb_strtolower($search)))
             ->map(fn (Instrument $instrument) => $instrument->value)

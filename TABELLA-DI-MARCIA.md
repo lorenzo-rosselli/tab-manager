@@ -407,14 +407,15 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 
 **Richieste**
 19. **Ricerca anche per strumento** (es. "basso").
-20. Nel form (nuovo brano e modifica) il tasto **Esc** porta all'elenco.
+20. Nel form (nuovo brano e modifica) e nell'anteprima del brano il tasto **Esc** porta all'elenco.
 21. Le tavolozze di **colore ed evidenziatore** si chiudono anche **cliccando in qualsiasi punto** della pagina (prima restavano aperte e si sovrapponevano).
 22. Il testo **incollato** con colore o evidenziatore deve **mantenerli**.
 23. Testo della modale di eliminazione: "Artista - Titolo verrà eliminato definitivamente".
 
 **Decisioni**
 - Ricerca per strumento: si confronta il testo con le etichette italiane dell'Enum (`label()`) e si filtra con `orWhereIn('instrument', ...)`. Basta anche una parte del nome ("chit").
-- Esc: se è aperta una tavolozza la chiude, altrimenti va all'elenco (non alla pagina precedente) e le modifiche non salvate si perdono, come richiesto.
+- Esc nel form: se è aperta una tavolozza la chiude, altrimenti va all'elenco (non alla pagina precedente) e le modifiche non salvate si perdono, come richiesto.
+- Esc nell'anteprima: gestito da `resources/js/app.js` (già caricato in tutte le pagine) per gli elementi con `data-escape-to`. Se è aperta la modale di eliminazione, Esc chiude solo quella.
 - Tavolozze: un ascoltatore sul clic di tutta la pagina chiude quelle aperte se il clic è fuori; così ne resta aperta al massimo una.
 - Causa del problema dell'incolla: il browser legge i colori incollati come `rgb(192, 0, 0)`, mentre il server ammetteva solo i valori esadecimali della tavolozza e li scartava al salvataggio. Inoltre l'evidenziatore era riconosciuto solo dentro `<mark>`, mentre Word e le pagine web usano gli sfondi del testo.
 - Soluzione nell'editor: la formattazione incollata viene ripulita (`transformPasted`). Il colore del testo diventa `#RRGGBB`, con il quasi nero trattato come "Automatico" e il quasi bianco ignorato. L'evidenziatore, riconosciuto anche dagli sfondi, diventa il più vicino tra quelli di Word, mentre gli sfondi bianchi o lontani vengono ignorati. Già che c'eravamo, si puliscono anche font e dimensione incollati da Word (`"Lucida Console"` con le virgolette, `10.0pt`).
@@ -428,6 +429,8 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 | `resources/views/songs/index.blade.php` | Testo della ricerca "Cerca artista, titolo, gruppo o strumento" |
 | `resources/views/songs/_delete.blade.php` | "Artista - Titolo verrà eliminato definitivamente." |
 | `resources/views/songs/_form.blade.php` | Attributo `data-home` sul foglio |
+| `resources/views/songs/show.blade.php` | Attributo `data-escape-to` (Esc → elenco) |
+| `resources/js/app.js` | Tasto Esc nelle pagine con `data-escape-to` |
 | `resources/js/tab-editor.js` | Esc; chiusura delle tavolozze con clic esterno; evidenziatore riconosciuto dagli sfondi; pulizia di colori, evidenziatori, font e dimensioni incollati |
 | `app/Services/TabDocument.php` | Nuovo `hexColor()`; qualsiasi colore del testo `#RRGGBB` |
 | `app/Models/Song.php` | Commento di `TEXT_COLORS` (è la tavolozza della barra) |
