@@ -1,6 +1,7 @@
 {{--
     Campi comuni ai form "Nuovo brano" e "Modifica brano".
-    Riceve: $song (brano da modificare, oppure un Song vuoto) e $submitLabel (testo del pulsante).
+    Riceve: $song (brano da modificare, oppure un Song vuoto).
+    I pulsanti Salva e Annulla sono in alto, accanto al titolo della pagina (songs/_form-header).
     old('campo', valore) mostra prima ciò che l'utente aveva scritto (se la validazione è fallita),
     altrimenti il valore salvato nel database.
 --}}
@@ -224,15 +225,4 @@
     </div>
 
     @vite('resources/js/tab-editor.js')
-
-    <div class="flex items-center gap-2">
-        <button type="submit" title="{{ $submitLabel }}" aria-label="{{ $submitLabel }}"
-                class="cursor-pointer rounded-md bg-gray-900 p-2 text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white">
-            @include('icons.save')
-        </button>
-        <a href="{{ url()->previous() }}" title="Annulla" aria-label="Annulla"
-           class="rounded-md p-2 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
-            @include('icons.x-mark')
-        </a>
-    </div>
 </div>

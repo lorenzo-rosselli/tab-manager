@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -659,6 +659,28 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 - [x] Codice scritto
 - [ ] `php artisan migrate` (aggiunge la colonna; i brani restano)
 - [ ] Verifica nel browser (con `npm run dev` acceso, oppure `npm run build` per la finestra dell'app)
+
+### Parte 14 – Pulsanti in alto (25/11/2026) 🔄
+
+**Richieste**
+35. Nel form (nuovo brano e modifica) i pulsanti **Salva** e **Annulla** in alto a destra, sulla stessa riga di "Nuovo brano" / "Modifica brano".
+36. Nell'anteprima il pulsante **Torna all'elenco** in alto, a sinistra degli altri, con l'ordine: **indietro, modifica, scarica, elimina**.
+
+**Decisioni**
+- Nuovo partial `songs/_form-header.blade.php` (titolo + Salva e Annulla), incluso da `create` ed `edit` dentro il `<form>`: il pulsante Salva deve stare nel form per inviarlo. Il titolo `<h1>` è passato lì dentro; `_form.blade.php` non riceve più `$submitLabel`.
+- Anteprima: tolta l'icona "Torna all'elenco" in fondo alla pagina; ora è la prima dei comandi in alto. Scarica resta il pulsante pieno.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `resources/views/songs/_form-header.blade.php` | Nuovo: titolo della pagina con Salva e Annulla a destra |
+| `resources/views/songs/create.blade.php`, `edit.blade.php` | Titolo e pulsanti dal nuovo partial, dentro il form |
+| `resources/views/songs/_form.blade.php` | Tolti i pulsanti in fondo |
+| `resources/views/songs/show.blade.php` | Comandi in alto nell'ordine indietro, modifica, scarica, elimina; tolto "Torna all'elenco" in fondo |
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Verifica nel browser
 
 ---
 
