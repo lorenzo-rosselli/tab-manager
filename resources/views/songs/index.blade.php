@@ -26,6 +26,14 @@
                     @include('icons.x-mark')
                 </a>
             @endif
+
+            {{-- Backup: scarica uno ZIP con tutti i brani in .docx e il database (BackupController). --}}
+            <span class="mx-1 h-6 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+            <a href="{{ route('backup') }}" title="Backup: scarica tutti i brani (.docx) e l'archivio in uno ZIP"
+               aria-label="Backup di tutti i brani"
+               class="rounded-md p-2 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
+                @include('icons.archive-box')
+            </a>
         </form>
     </div>
 

@@ -17,17 +17,42 @@ L'app non cerca e non genera le tabulature da sola. È l'utente che le scrive o 
    - crea il collegamento **Tab Manager** sul desktop e nella cartella dell'app, e apre l'app.
 5. Da qui in poi si usa solo il collegamento **Tab Manager**: si apre in una finestra dedicata.
 
-I brani vengono salvati in `%LOCALAPPDATA%\TabManager\database.sqlite`, fuori dalla cartella dell'app.
+## I tuoi brani: dove sono e come non perderli
+
+I brani stanno in **`Documenti\Tab Manager\database.sqlite`**, fuori dalla cartella dell'app. Puoi cancellare, riscaricare, aggiornare o disinstallare l'app: i brani restano lì. Se la cartella Documenti è sincronizzata con OneDrive, finiscono anche nel cloud.
+
+**Copie automatiche**, in `Documenti\Tab Manager\Backup`:
+- una al giorno, quando apri Tab Manager;
+- una prima di ogni aggiornamento.
+
+Si tengono le ultime 30.
+
+**Backup da tenere al sicuro**: nell'elenco dei brani, pulsante **Backup** (la scatola con la freccia, accanto alla ricerca). Scarica uno ZIP con:
+- tutti i brani in Word (`.docx`), da aprire e stampare anche senza Tab Manager;
+- il file `database.sqlite`, che serve per il ripristino;
+- un `LEGGIMI.txt` con le istruzioni.
+
+Conserva lo ZIP su una chiavetta, nel cloud o mandalo per email a te stesso.
+
+**Ripristinare i brani** (da un backup, da una copia automatica o su un altro computer):
+1. chiudi Tab Manager;
+2. apri `Documenti\Tab Manager` (su un computer nuovo: prima installa Tab Manager e aprilo una volta);
+3. copia lì il `database.sqlite` del backup, al posto di quello che c'è. Se usi una copia automatica della cartella `Backup`, rinominala in `database.sqlite`;
+4. riapri Tab Manager.
+
+**Passare a un altro computer**: installa Tab Manager sul computer nuovo, poi ripristina l'ultimo backup come sopra (oppure copia tutta la cartella `Documenti\Tab Manager`).
 
 ## Aggiornamento
 
-Scarica il nuovo ZIP, sbloccalo ed estrailo (anche al posto della cartella vecchia), poi doppio clic su **`Installa Tab Manager.cmd`**. I brani restano.
+Scarica il nuovo ZIP, sbloccalo ed estrailo (anche al posto della cartella vecchia), poi doppio clic su **`Installa Tab Manager.cmd`**. I brani restano: prima di aggiornare l'installazione ne fa una copia in `Documenti\Tab Manager\Backup`.
+
+Chi aveva una versione precedente con i brani in `%LOCALAPPDATA%\TabManager`: l'installazione li sposta da sola in `Documenti\Tab Manager`. Il file vecchio resta, rinominato `database.sqlite.spostato`, e si può cancellare dopo aver controllato che i brani ci sono.
 
 ## Disinstallare
 
 1. Nella cartella dell'app, doppio clic su **`Disinstalla Tab Manager.cmd`** e conferma con **S**.
    Chiude l'app e cancella i collegamenti **Tab Manager**.
-2. Ti chiede se cancellare anche l'**archivio delle tabulature**: scrivi **SI** per cancellarlo (le tabulature vanno perse), oppure premi **Invio** per tenerlo. Se lo tieni e reinstalli, ritrovi i brani com'erano.
+2. **I brani non vengono mai cancellati**: restano in `Documenti\Tab Manager`, con le copie di sicurezza. Se reinstalli, li ritrovi com'erano. Se vuoi davvero eliminarli, cancella tu quella cartella.
 3. Alla fine si apre Esplora file con la cartella dell'app selezionata: chiudi la finestra nera e **cancella la cartella**.
 
 PHP, Composer e Node.js restano installati, perché possono servire ad altri programmi. Se vuoi toglierli:

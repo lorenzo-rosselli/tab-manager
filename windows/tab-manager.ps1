@@ -8,6 +8,8 @@
 |    schede o menu; titolo e icona sono quelli di Tab Manager. Edge usa un profilo tutto suo
 |    (cartella %LOCALAPPDATA%\TabManager\Edge), separato dal browser di tutti i giorni.
 | 3. Quando la finestra viene chiusa, spegne il server.
+| Prima di tutto, una volta al giorno, fa una copia di sicurezza dell'archivio dei brani
+| (php artisan tab:backup --daily → Documenti\Tab Manager\Backup).
 |
 | Le pagine usano i file compilati con "npm run build" (cartella public\build): dopo ogni modifica
 | al codice va rifatto "npm run build". Se invece "npm run dev" è acceso, usa quello.
@@ -75,6 +77,12 @@ try {
     }
     if (-not (Test-Path $hot) -and -not (Test-Path (Join-Path $root 'public\build\manifest.json'))) {
         throw "Mancano i file dell'interfaccia.`nApri il terminale nella cartella del progetto ed esegui:`nnpm run build"
+    }
+
+    # Copia di sicurezza del giorno (solo se oggi non c'è già). Un errore qui non blocca l'app.
+    try {
+        & $php (Join-Path $root 'artisan') tab:backup --daily | Out-Null
+    } catch {
     }
 
     # Server web integrato di PHP, come fa "php artisan serve": cartella public e router di Laravel.

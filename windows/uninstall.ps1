@@ -6,10 +6,10 @@
 |  1. chiude l'app, se è aperta (finestra di Edge e server PHP sulla porta 8765);
 |  2. cancella il collegamento "Tab Manager" sul desktop e quello nella cartella dell'app;
 |  3. cancella il profilo di Edge della finestra dell'app (%LOCALAPPDATA%\TabManager\Edge);
-|  4. l'archivio delle tabulature (il database) lo cancella solo se l'utente lo conferma
-|     scrivendo SI: altrimenti resta, e una nuova installazione lo ritrova com'era.
 |
-| Non tocca:
+| Non tocca mai:
+|  - l'archivio dei brani e le sue copie (Documenti\Tab Manager): reinstallando Tab Manager si
+|    ritrova tutto com'era; chi vuole davvero cancellarlo lo fa a mano;
 |  - la cartella dell'app: si cancella a mano alla fine (uno script non può cancellare la
 |    cartella da cui è in esecuzione). Su un computer di sviluppo è il progetto con git: va tenuta;
 |  - PHP, Composer (php.new) e Node.js, che possono servire ad altri programmi.
@@ -18,8 +18,8 @@
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot   # cartella dell'app
-$dataDir = Join-Path $env:LOCALAPPDATA 'TabManager'
-$edgeProfile = Join-Path $dataDir 'Edge'
+$appDataDir = Join-Path $env:LOCALAPPDATA 'TabManager'   # solo il profilo di Edge
+$edgeProfile = Join-Path $appDataDir 'Edge'
 $port = 8765
 Set-Location $root
 
@@ -93,45 +93,28 @@ try {
         Write-Host "Cancellato: $edgeProfile"
     }
 
-    # 4. Archivio delle tabulature: dove dice il .env (come in setup.ps1).
+    # 4. Archivio dei brani: non si tocca. Si dice solo dov'è (dal .env, come in setup.ps1).
     $database = Get-EnvValue 'DB_DATABASE'
     if (-not $database) {
         $database = Join-Path $root 'database\database.sqlite'   # predefinito di Laravel
     }
     $database = [System.IO.Path]::GetFullPath($database)
-    $kept = $null
-    if (Test-Path $database) {
-        if ($database.StartsWith($root.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) {
-            # Dentro la cartella dell'app: se ne va insieme a lei.
-            $kept = $database
-        } else {
-            Write-Step "Archivio delle tabulature: $database"
-            Write-Host 'ATTENZIONE: se lo cancelli, tutte le tabulature salvate vanno perse.' -ForegroundColor Yellow
-            Write-Host 'Se lo tieni, reinstallando Tab Manager le ritrovi com''erano.'
-            $answer = Read-Host 'Per cancellarlo scrivi SI, per tenerlo premi Invio'
-            if ($answer.Trim() -eq 'SI') {
-                foreach ($file in @($database, "$database-journal", "$database-wal", "$database-shm")) {
-                    if (Test-Path $file) {
-                        Remove-Path $file
-                    }
-                }
-                Write-Host 'Archivio cancellato.'
-            } else {
-                $kept = $database
-                Write-Host 'Archivio tenuto.'
-            }
-        }
-    }
+    $insideApp = $database.StartsWith($root.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)
 
-    # La cartella dei dati, se è rimasta vuota.
-    if ((Test-Path $dataDir) -and -not (Get-ChildItem -LiteralPath $dataDir -Force)) {
-        Remove-Item -LiteralPath $dataDir -Force
+    # La cartella di Edge in AppData, se è rimasta vuota.
+    if ((Test-Path $appDataDir) -and -not (Get-ChildItem -LiteralPath $appDataDir -Force)) {
+        Remove-Item -LiteralPath $appDataDir -Force
     }
 
     Write-Host ''
     Write-Host 'Disinstallazione completata.' -ForegroundColor Green
-    if ($kept) {
-        Write-Host "L'archivio delle tabulature è ancora qui: $kept"
+    if (Test-Path $database) {
+        Write-Host "L'archivio dei brani NON è stato toccato: $database"
+        Write-Host "Le copie di sicurezza sono nella cartella Backup accanto."
+        if ($insideApp) {
+            Write-Host 'ATTENZIONE: questo archivio è dentro la cartella dell''app. Prima di cancellarla,' -ForegroundColor Yellow
+            Write-Host 'rilancia "Installa Tab Manager.cmd" (lo sposta in Documenti\Tab Manager) oppure copialo altrove.' -ForegroundColor Yellow
+        }
     }
     Write-Host ''
     Write-Host "Ultimo passo, a mano: chiudi questa finestra e cancella la cartella dell'app"

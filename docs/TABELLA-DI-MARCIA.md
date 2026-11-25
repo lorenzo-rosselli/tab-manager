@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto; Annulla sicuro; sovrascrittura |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto; Annulla sicuro; sovrascrittura; archivio sicuro e backup |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -751,6 +751,52 @@ Dalla revisione dell'app a fine tappa 6.
 - All'inizio del paragrafo (unire due righe) o con una selezione, e con INS spento, Backspace fa come sempre. Canc non cambia.
 - [x] Verificato (jsdom): `G|--12----` → Backspace → `G|--1-----` → Backspace → `G|--------`, sempre 70 caratteri; trattino senza colore ma con la dimensione del carattere cancellato; a inizio riga non interviene
 - [ ] Verifica nel browser
+
+### Parte 17 – Archivio sicuro e backup (25/11/2026) 🔄
+
+Dalla revisione dell'app a fine tappa 6.
+
+**Richieste**
+42. L'archivio dei brani deve essere **indipendente dall'app**: restare anche se l'app viene disinstallata, aggiornata o installata su un altro computer, senza rischio di perdere il lavoro.
+43. Un pulsante che scarica il **backup ZIP** di tutti i brani in .docx.
+
+**Situazione trovata**
+- Tester: archivio in `%LOCALAPPDATA%\TabManager` (fuori dall'app, ma nascosto, senza copie, e cancellabile dalla disinstallazione con "SI").
+- Computer di sviluppo: `.env` senza `DB_DATABASE`, quindi archivio in `database/database.sqlite`, **dentro il progetto** e non su git: cancellando o riscaricando la cartella si perdeva tutto.
+
+**Decisioni** (scelte dall'utente: cartella Documenti, ZIP con .docx più database)
+- Archivio in **`Documenti\Tab Manager\database.sqlite`** per tutti, sviluppo compreso. `setup.ps1` sposta da solo gli archivi delle posizioni vecchie (copia + copia di sicurezza + file vecchio rinominato `.spostato`, mai cancellato) e scrive `DB_DATABASE` nel `.env`.
+- **Disinstallazione**: non cancella mai l'archivio; tolta la domanda "scrivi SI".
+- **Copie automatiche** in `Documenti\Tab Manager\Backup` con il nuovo comando `php artisan tab:backup`: una al giorno all'avvio dell'app, una prima di ogni aggiornamento; tenute le ultime 30.
+- **Backup ZIP** dal pulsante nell'elenco: tutti i brani in .docx (leggibili senza l'app), il database (per ripristinare: dai .docx non si torna indietro) e un `LEGGIMI.txt` con le istruzioni.
+- Copie del database con `VACUUM INTO` (coerenti anche ad app aperta). ZIP con `ZipArchive` (già presente per PHPWord): nessuna libreria nuova.
+- Ripristino a mano (README e LEGGIMI); un pulsante "Ripristina" va tra gli sviluppi futuri.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `app/Services/TabBackup.php` | Nuovo: copie datate, pulizia, ZIP di backup |
+| `routes/console.php` | Nuovo comando `tab:backup` (`--daily`, `--label`) |
+| `app/Http/Controllers/BackupController.php` | Nuovo: scarica lo ZIP |
+| `routes/web.php` | Rotta `GET /backup` (`backup`) |
+| `resources/views/songs/index.blade.php` | Pulsante Backup accanto alla ricerca |
+| `resources/views/icons/archive-box.blade.php` | Nuova icona (Heroicons, MIT) |
+| `windows/setup.ps1` | Archivio in Documenti, spostamento dalle posizioni vecchie, `DB_DATABASE` nel `.env`, copia prima di `migrate` |
+| `windows/tab-manager.ps1` | Copia del giorno all'avvio |
+| `windows/uninstall.ps1` | Non cancella mai l'archivio |
+| `README.md` | Nuova sezione "I tuoi brani: dove sono e come non perderli"; aggiornamento e disinstallazione |
+
+**Verifiche fatte in fase di sviluppo**
+- [x] Sintassi PHP e PowerShell (parser di PowerShell 7)
+- [x] Spostamento simulato con PowerShell 7 (cartelle finte): archivio dentro il progetto; rilancio senza cambiamenti; tester con il percorso di AppData scritto con le barre `/` (contato una volta); `.env` nuovo con archivio in AppData; archivio già presente in Documenti (non sovrascritto, i vecchi vanno in Backup); file `.spostato` già esistente
+- [x] `VACUUM INTO` con parametro e percorso con spazi e accenti (SQLite 3.45)
+- [x] ZIP con il vero generatore Word: due brani con lo stesso nome ("(2)"), caratteri non validi tolti dal nome, database leggibile, LEGGIMI con a capo di Windows; pulizia: da 34 copie ne restano 30
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Sul computer di sviluppo: rilanciare `Installa Tab Manager.cmd` (sposta l'archivio in Documenti e aggiorna il `.env`), poi controllare che i brani ci siano
+- [ ] Prova del pulsante Backup e di un ripristino
+- [ ] Prova sul PC del tester
 
 ---
 

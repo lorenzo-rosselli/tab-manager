@@ -56,7 +56,7 @@ Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database
 Per l'uso di tutti i giorni l'app si apre dal collegamento **"Tab Manager"** (sul desktop e nella cartella del progetto), senza terminali: una finestra tutta sua, senza barra degli indirizzi, schede o menu, con titolo e icona di Tab Manager (anche nella barra delle applicazioni).
 - **Perché non un programma compilato** (per esempio con NativePHP/Electron): un eseguibile costruito da noi non sarebbe firmato e Smart App Control lo bloccherebbe. Si usa invece Microsoft Edge, già installato e firmato, in "modalità app" (`--app=`), che mostra solo la pagina. Nessuna libreria in più.
 - File nella cartella `windows/` del progetto (oltre a `setup.ps1` e `uninstall.ps1`, vedi "Installazione su un altro computer" e "Disinstallazione"):
-  - `tab-manager.ps1`: script di avvio. Usa il PHP di php.new (`%USERPROFILE%\.config\herd-lite\bin\php.exe`) anche se sul computer c'è un altro PHP, e solo se manca quello nel PATH; trova Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server. Se il server è già acceso (seconda finestra), apre solo la finestra. Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
+  - `tab-manager.ps1`: script di avvio. Usa il PHP di php.new (`%USERPROFILE%\.config\herd-lite\bin\php.exe`) anche se sul computer c'è un altro PHP, e solo se manca quello nel PATH; trova Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server. Se il server è già acceso (seconda finestra), apre solo la finestra. Prima di avviare il server lancia `php artisan tab:backup --daily` (copia di sicurezza del giorno, vedi "Archivio dei brani e copie di sicurezza"; un suo errore non blocca l'app). Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
   - `install-shortcut.ps1`: crea il collegamento `Tab Manager.lnk` sul desktop e nella cartella del progetto (da eseguire una volta, e di nuovo se si sposta la cartella del progetto, con `powershell -NoProfile -File windows\install-shortcut.ps1`: funziona sia da PowerShell sia dal Prompt dei comandi, dove scrivere solo il nome del file `.ps1` lo aprirebbe nel Blocco note). Il collegamento lancia `conhost.exe --headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\tab-manager.ps1`, cioè lo script senza nessuna finestra del terminale (`-ExecutionPolicy Bypass` vale solo per quell'avvio: l'app parte anche dove PowerShell non esegue script, impostazione predefinita `Restricted`), con l'icona `windows\tab-manager.ico`. Il collegamento contiene percorsi assoluti di questo computer, quindi quello nella cartella del progetto è nel `.gitignore` (`/Tab Manager.lnk`);
   - `tab-manager.ico`: l'icona (16–256 px).
 - Gli script sono salvati in UTF-8 **con BOM**: Windows PowerShell 5.1 senza BOM leggerebbe male le lettere accentate. Girano con la Execution Policy `RemoteSigned` già impostata (sono file locali).
@@ -72,9 +72,13 @@ Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (i
 - toglie il segno di Internet ai file dell'app (`Unblock-File`), nel caso lo ZIP non fosse stato sbloccato;
 - **PHP e Composer**: l'app usa **sempre il PHP di php.new**, anche se sul computer c'è già un altro PHP (per esempio quello di XAMPP), così le versioni non vanno in conflitto. Se `%USERPROFILE%\.config\herd-lite\bin\php.exe` o Composer mancano, li installa con il comando ufficiale di php.new (`https://php.new/install/windows/8.5`), in un PowerShell separato: php.new usa una cartella sua e non tocca l'altro PHP. Per i comandi dell'installazione quella cartella è messa **per prima nel PATH** (solo in quel processo, le impostazioni del PC non cambiano). Controlla che PHP sia almeno **8.4**, la versione minima richiesta dalle librerie in `composer.lock`;
 - **Node.js**: se manca lo installa con `winget install OpenJS.NodeJS.LTS` (Windows chiede una conferma); serve solo a compilare l'interfaccia;
-- **`.env`**: solo se non esiste, lo crea da `.env.example` con `DB_DATABASE` che punta a **`%LOCALAPPDATA%\TabManager\database.sqlite`** (fuori dalla cartella dell'app, così un nuovo ZIP non cancella i brani; percorso con le barre `/` tra apici). Se `.env` esiste già (per esempio sul computer di sviluppo) non viene toccato, e il database resta quello indicato lì (`database/database.sqlite` se `DB_DATABASE` manca);
+- **`.env`**: solo se non esiste, lo crea copiando `.env.example`;
+- **archivio dei brani** in **`Documenti\Tab Manager\database.sqlite`** (cartella Documenti da `[Environment]::GetFolderPath('MyDocuments')`, quindi anche se è su OneDrive), vedi "Archivio dei brani e copie di sicurezza":
+  - crea `Documenti\Tab Manager` e `Documenti\Tab Manager\Backup`;
+  - cerca archivi nelle posizioni vecchie: quello indicato da `DB_DATABASE` nel `.env` (o `database\database.sqlite` se manca) e `%LOCALAPPDATA%\TabManager\database.sqlite` (le prime versioni). Per ognuno (contato una sola volta anche se scritto con `/` o `\`): una copia in `Backup` ("… archivio precedente da AppData" / "… dalla cartella dell'app"); se in Documenti non c'è ancora un archivio, lo copia lì, altrimenti non sovrascrive quello di Documenti e avvisa; poi rinomina il file vecchio in `database.sqlite.spostato` (con data e ora se il nome è già preso), così non viene ripreso alla prossima installazione e si può cancellare a mano. Se la rinomina non riesce (app aperta) avvisa e prosegue;
+  - scrive nel `.env` `DB_DATABASE` con il percorso di Documenti (barre `/`, tra apici perché contiene spazi), subito dopo `DB_CONNECTION`;
 - `composer install`, `php artisan key:generate` (solo se manca la chiave), `npm install`, `npm run build`;
-- **database**: se il file non esiste lo crea, poi `migrate --force` e `db:seed --force` (i tre brani di prova); se esiste, solo `migrate --force` (i brani restano);
+- **database**: se il file non esiste lo crea, poi `migrate --force` e `db:seed --force` (i tre brani di prova); se esiste, prima `php artisan tab:backup --label="prima dell'aggiornamento"` (copia in `Backup`), poi solo `migrate --force` (i brani restano);
 - esegue `install-shortcut.ps1` e apre l'app dal collegamento.
 
 ### Disinstallazione
@@ -83,11 +87,30 @@ Doppio clic su **`Disinstalla Tab Manager.cmd`** (nella cartella principale): av
 - chiude l'app se è aperta: i processi di Edge con il profilo `%LOCALAPPDATA%\TabManager\Edge` e il server PHP sulla porta 8765;
 - cancella i collegamenti `Tab Manager.lnk` sul desktop e nella cartella dell'app (quello sul desktop solo se è davvero di Tab Manager, cioè se lancia `tab-manager.ps1`);
 - cancella il profilo di Edge dell'app (riprova per qualche secondo se Edge tiene ancora i file aperti);
-- **archivio delle tabulature**: lo trova come `setup.ps1` (da `DB_DATABASE` nel `.env`, altrimenti `database\database.sqlite`). Se è fuori dalla cartella dell'app lo cancella **solo se l'utente scrive SI**, dopo un avviso che le tabulature vanno perse; con Invio resta, e una nuova installazione lo ritrova. Se è dentro la cartella dell'app, se ne va con lei. La cartella `%LOCALAPPDATA%\TabManager` viene tolta se resta vuota;
+- **non tocca mai l'archivio dei brani né le sue copie** (`Documenti\Tab Manager`): alla fine dice dov'è (da `DB_DATABASE` nel `.env`). Se l'archivio è ancora dentro la cartella dell'app (versione vecchia non aggiornata), avvisa di rilanciare l'installazione o di copiarlo prima di cancellare la cartella. Chi vuole davvero cancellare i brani lo fa a mano. La cartella `%LOCALAPPDATA%\TabManager` (dove resta solo il profilo di Edge) viene tolta se resta vuota;
 - **non** cancella la cartella dell'app (uno script non può cancellare la cartella da cui è in esecuzione, e sul computer di sviluppo è il progetto con git): alla fine la apre in Esplora file, già selezionata, da cancellare a mano;
 - **non** disinstalla PHP, Composer (php.new) e Node.js, che possono servire ad altri programmi. Il `README.md` spiega come toglierli a mano: cartella `%USERPROFILE%\.config\herd-lite` e la sua voce nel PATH dell'utente; Node.js da Impostazioni → App oppure `winget uninstall OpenJS.NodeJS.LTS`.
 
 Nient'altro resta sul computer: l'app non crea servizi, voci nel registro o avvii automatici.
+
+### Archivio dei brani e copie di sicurezza
+L'archivio è indipendente dall'app: si può cancellare, riscaricare, aggiornare o disinstallare l'app, anche su un altro computer, senza perdere i brani.
+- **Dove**: `Documenti\Tab Manager\database.sqlite` (indicato da `DB_DATABASE` nel `.env`, che `setup.ps1` scrive da solo). Cartella visibile in Esplora file; se Documenti è sincronizzata con OneDrive, l'archivio finisce anche nel cloud.
+- **Copie automatiche** in `Documenti\Tab Manager\Backup`, con il comando **`php artisan tab:backup`** (in `routes/console.php`, usa `App\Services\TabBackup`):
+  - `--daily`: una volta al giorno, all'avvio dell'app (`tab-manager.ps1`), solo se oggi non c'è già una copia;
+  - `--label="prima dell'aggiornamento"`: prima di ogni `migrate` di `setup.ps1`;
+  - senza opzioni, a mano: etichetta "manuale".
+  
+  Nome della copia: data, ora ed etichetta, es. `2026-11-25 17-05-12 automatico.sqlite`. Si tengono le ultime **30** (`TabBackup::KEEP`), le più vecchie vengono cancellate. Se il database non esiste ancora, il comando non fa niente.
+- **Backup da scaricare**: pulsante **Backup** nell'elenco (vedi sezione 5). Scarica `Tab Manager backup AAAA-MM-GG HH-MM.zip` con:
+  - `Brani/Artista - Titolo.docx`: tutti i brani, come il download del singolo brano; con artista e titolo uguali si aggiunge " (2)", " (3)"…;
+  - `database.sqlite`: l'archivio completo;
+  - `LEGGIMI.txt`: contenuto e istruzioni di ripristino (a capo di Windows).
+  
+  I `.docx` servono per leggere e stampare (l'app non li sa rileggere); per ripristinare serve `database.sqlite`.
+- **Copie coerenti**: le copie del database si fanno con `VACUUM INTO` di SQLite, corrette anche se l'app sta scrivendo (una semplice copia del file potrebbe prenderne una versione a metà).
+- **Ripristino** (spiegato nel `README.md` e nel `LEGGIMI.txt`): chiudere l'app e mettere il `database.sqlite` del backup (o una copia automatica rinominata) in `Documenti\Tab Manager`, al posto di quello esistente. Su un altro computer: prima installare l'app e aprirla una volta. Nessun pulsante "Ripristina" per ora.
+- Classe **`App\Services\TabBackup`**: `databasePath()`, `folder()` (la cartella `Backup` accanto al database), `hasToday()`, `snapshot($label)` (copia datata + pulizia delle più vecchie), `zip()` (crea lo ZIP in un file temporaneo e ne restituisce il percorso), `zipName()`. Lo ZIP si crea con `ZipArchive` di PHP, già presente perché serve anche a PHPWord (anche il .docx è uno ZIP): nessuna libreria in più.
 
 In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anche nello ZIP di GitHub): `cmd.exe` e PowerShell 5.1 le vogliono così.
 
@@ -101,7 +124,7 @@ In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anch
 | Frontend | **Blade** + **Tailwind CSS 4** (via Vite) | HTML generato dal server, già incluso nel progetto Laravel. Tema chiaro e scuro, con interruttore |
 | Editor del foglio | **Tiptap 3** (`@tiptap/core`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-style`, `@tiptap/extension-text-align`, `@tiptap/extension-highlight`; licenza MIT) | Editor di testo ricco, installato con npm e caricato da Vite solo nelle pagine del form (`resources/js/tab-editor.js`) |
 | JavaScript | Nessun'altra libreria | Oltre all'editor: `resources/js/tab-pages.js` per mostrare il foglio su pagine A4 (form e anteprima) e `resources/js/app.js` (poche righe) per l'interruttore del tema e il tasto Esc nell'anteprima. Tutto il resto (ordinamento, riga cliccabile, modale di conferma) funziona senza JavaScript |
-| Database | **SQLite** | File unico `database/database.sqlite`, predefinito in Laravel |
+| Database | **SQLite** | File unico `Documenti\Tab Manager\database.sqlite`, fuori dalla cartella dell'app (sezione 2, "Archivio dei brani e copie di sicurezza") |
 | Export Word | **PHPWord** (`phpoffice/phpword`) | Unica dipendenza PHP aggiuntiva |
 | Test | **Pest** | Predefinito in Laravel |
 | App desktop | **Microsoft Edge** in modalità app + script **PowerShell** | Finestra dedicata e collegamento sul desktop (sezione 2); nessuna dipendenza in più |
@@ -195,12 +218,16 @@ Sa trattare il foglio lato server:
 | PUT | `/songs/{song}` | `update` | `songs.update` | Aggiorna brano |
 | DELETE | `/songs/{song}` | `destroy` | `songs.destroy` | Elimina brano |
 | GET | `/songs/{song}/docx` | `download` | `songs.download` | Genera e scarica il .docx |
+| GET | `/backup` | `BackupController` (invocabile) | `backup` | Scarica lo ZIP di backup (tutti i brani in .docx + database) |
 
 ```php
 Route::redirect('/', '/songs');
 Route::resource('songs', SongController::class);
 Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('songs.download');
+Route::get('backup', BackupController::class)->name('backup');
 ```
+
+`App\Http\Controllers\BackupController` ha una sola azione (`__invoke`): riceve `TabBackup` per dependency injection e risponde con `response()->download($backup->zip(), $backup->zipName(), ['Content-Type' => 'application/zip'])->deleteFileAfterSend()`.
 
 ### Controller `App\Http\Controllers\SongController`
 - `store` e `update` salvano `$request->songData()` (vedi sezione 6) e fanno un redirect all'anteprima con un **messaggio flash** (`->with('status', ...)`): "Brano salvato.", "Modifiche salvate."; `destroy` torna all'elenco con "Brano eliminato.".
@@ -227,7 +254,7 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 ### Viste Blade (`resources/views`)
 - `layouts/app.blade.php`: struttura comune; classe del tema su `<html>`; icona dell'app (`public/favicon.svg` e `public/favicon.ico`, usata dalla scheda del browser, dalla finestra dedicata e dalla barra delle applicazioni); intestazione con il logo e il nome dell'app, l'interruttore del tema e l'icona "Nuovo brano"; messaggio flash `session('status')`.
 - `songs/index.blade.php`:
-  - in alto: casella di ricerca "Cerca artista, titolo, gruppo o strumento" (form GET con icona lente e icona per annullare la ricerca). Ricerca e ordinamento si conservano a vicenda (campo nascosto `sort` nel form, `q` nei link delle intestazioni);
+  - in alto: casella di ricerca "Cerca artista, titolo, gruppo o strumento" (form GET con icona lente e icona per annullare la ricerca) e, dopo un separatore, l'icona **Backup** (`archive-box`, link alla rotta `backup`: scarica lo ZIP con tutti i brani e il database). Ricerca e ordinamento si conservano a vicenda (campo nascosto `sort` nel form, `q` nei link delle intestazioni);
   - **sopra la tabella**, solo quando c'è almeno un ordinamento: la riga "Ordinato per:" con le colonne ordinate nell'ordine di priorità (etichette a pillola con la freccia su/giù) e l'icona ✕ "Azzera ordinamento", che toglie tutti gli ordinamenti e mantiene la ricerca;
   - tabella con Artista, Titolo, Gruppo ("—" se vuoto), Strumento, Data e Azioni (Modifica, Scarica .docx, Elimina);
   - **intestazioni ordinabili**: ogni clic su una colonna fa crescente → decrescente → tolta; le colonne si accumulano nell'ordine di scelta. La colonna ordinata mostra una freccia (su/giù) e, se le colonne ordinate sono più di una, il numero di priorità. Il tooltip dice cosa farà il clic successivo;
@@ -239,7 +266,7 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
   - **Annulla** porta a un indirizzo fisso: l'elenco per un brano nuovo, l'anteprima del brano in modifica (non "la pagina precedente", che dopo un errore di validazione sarebbe il form stesso).
   - Se ci sono **modifiche non salvate**, Annulla non esce subito ma apre una finestra di conferma (API Popover, come quella dell'eliminazione, id `discard-changes`): "Uscire senza salvare? Le modifiche non salvate andranno perse.", con le icone "Continua a modificare" (matita, chiude la finestra) ed "Esci senza salvare" (✕ su fondo rosso). Il controllo lo fa `tab-editor.js`: confronta lo stato del form all'apertura della pagina (tutti i campi tranne `_token`, `_method` e `tab`, più il documento dell'editor con `getJSON()`) con quello attuale; scrivere e poi annullare con Ctrl+Z non conta come modifica. Senza JavaScript Annulla esce senza chiedere.
 - `songs/show.blade.php`: titolo, artista, riga "Strumento: … – Gruppo: …" (il gruppo solo se presente); a destra, sulla stessa riga del titolo, le icone in quest'ordine: **Torna all'elenco**, **Modifica**, **Scarica .docx** (pulsante pieno), **Elimina**; sotto, il **foglio** sulle stesse pagine A4 del form (elemento con `data-paginate`, impaginato da `tab-pages.js`; nell'anteprima le pagine sono pulite, senza bordo tratteggiato né scritta dell'interruzione), con l'HTML di `TabDocument::toHtml()`. **Tasto Esc**: torna all'elenco. L'indirizzo è nell'attributo `data-escape-to` e il tasto è gestito da `resources/js/app.js`; se è aperta la modale di eliminazione, Esc chiude solo quella.
-- `icons/*.blade.php`: icone SVG scritte direttamente nell'HTML, incluse con `@include('icons.nome')`, senza pacchetti: `logo` (il logo dell'app), `plus`, `pencil`, `download`, `trash`, `save`, `x-mark`, `arrow-left`, `magnifying-glass`, `chevron-up`, `chevron-down`, `align-left`, `align-center`, `align-right`, `page-break`, `tab-staff`, `highlighter`, `sun`, `moon`. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` e l'evidenziatore `highlighter` vengono da Lucide (licenza ISC), con lo spessore portato a 1.5; le icone di allineamento, `page-break` (fondo di una pagina, linea tratteggiata, inizio della successiva) e `tab-staff` (le righe di una tabulatura con un "+") sono disegnate sul modello delle Heroicons.
+- `icons/*.blade.php`: icone SVG scritte direttamente nell'HTML, incluse con `@include('icons.nome')`, senza pacchetti: `logo` (il logo dell'app), `plus`, `pencil`, `download`, `trash`, `save`, `x-mark`, `arrow-left`, `magnifying-glass`, `chevron-up`, `chevron-down`, `align-left`, `align-center`, `align-right`, `page-break`, `tab-staff`, `archive-box`, `highlighter`, `sun`, `moon`. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` e l'evidenziatore `highlighter` vengono da Lucide (licenza ISC), con lo spessore portato a 1.5; le icone di allineamento, `page-break` (fondo di una pagina, linea tratteggiata, inizio della successiva) e `tab-staff` (le righe di una tabulatura con un "+") sono disegnate sul modello delle Heroicons.
 - **Icona e logo dell'app**, disegnati per Tab Manager: quadrato arancione (`#F59E0B`) con gli angoli arrotondati, quattro corde scure (`#1F2937`) e i numeri 3, 5, 7 sulle corde come in una tablatura. Le cifre sono tracciati (non testo), così l'icona è identica su ogni computer. Stessa immagine in `resources/views/icons/logo.blade.php` (intestazione, 32 px), `public/favicon.svg`, `public/favicon.ico` e `windows/tab-manager.ico` (16–256 px).
 - `resources/css/app.css`: oltre a Tailwind, la classe `.tab-sheet` del foglio (editor e anteprima): Lucida Console 10 pt, interlinea `normal` (quella del font, come l'interlinea singola del Word), testo scuro, `white-space: pre-wrap` (gli spazi restano), paragrafi senza margini. Inoltre le classi delle pagine: `.tab-paper` (il foglio, largo 21 cm; bianco finché lo script non disegna le pagine), `.tab-paper-pages` e `.tab-page` (le pagine bianche con l'ombra e, solo nell'editor, il bordo tratteggiato della zona scrivibile, più scuro quando si sta scrivendo), `.tab-page-spacer` (spazio fino alla pagina successiva) e `.tab-page-break` (interruzione di pagina: alta 0 nell'anteprima; nell'editor una riga tratteggiata grigia con la scritta "Interruzione di pagina", blu quando è selezionata).
 
@@ -360,6 +387,7 @@ Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh
 7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).
 
 ### Possibili sviluppi futuri (non ora)
+- Pulsante "Ripristina" per caricare un backup dall'app
 - Trasposizione automatica di semitoni
 - Esportazione anche in PDF o in .txt
 - Importazione da MusicXML / Guitar Pro

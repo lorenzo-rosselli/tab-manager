@@ -11,21 +11,26 @@
 |  2. Node.js, se manca (con winget, già presente in Windows 11);
 |  3. le librerie PHP (composer install) e JavaScript (npm install);
 |  4. l'interfaccia compilata (npm run build);
-|  5. la configurazione (.env, solo la prima volta): il database dei brani sta in
-|     %LOCALAPPDATA%\TabManager\database.sqlite, fuori dalla cartella dell'app, così
-|     aggiornando con un nuovo ZIP i brani restano;
-|  6. il database (creato con i brani di prova solo la prima volta, poi solo aggiornato);
-|  7. il collegamento "Tab Manager" sul desktop e nella cartella dell'app, e avvia l'app.
+|  5. la configurazione (.env, solo la prima volta);
+|  6. l'archivio dei brani in Documenti\Tab Manager\database.sqlite, fuori dalla cartella dell'app:
+|     l'app si può cancellare, riscaricare e aggiornare senza perdere i brani. Un archivio che si
+|     trova ancora in una posizione vecchia (%LOCALAPPDATA%\TabManager, oppure database\database.sqlite
+|     dentro la cartella dell'app) viene copiato lì; il file vecchio resta, rinominato
+|     "database.sqlite.spostato", e una copia va anche nella cartella Backup;
+|  7. il database: prima di aggiornarlo ne fa una copia in Documenti\Tab Manager\Backup;
+|     la prima volta lo crea con i brani di prova;
+|  8. il collegamento "Tab Manager" sul desktop e nella cartella dell'app, e avvia l'app.
 |
 | Si può rilanciare quando si vuole: è anche il modo per aggiornare l'app.
-| Se la cartella ha già un .env (per esempio sul computer di sviluppo), la configurazione
-| e il database esistenti non vengono toccati.
 #>
 
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot   # cartella dell'app
-$dataDir = Join-Path $env:LOCALAPPDATA 'TabManager'
+$dataDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tab Manager'   # anche con Documenti su OneDrive
+$database = Join-Path $dataDir 'database.sqlite'
+$backupDir = Join-Path $dataDir 'Backup'
+$legacyDatabase = Join-Path $env:LOCALAPPDATA 'TabManager\database.sqlite'   # posizione delle prime versioni
 $herdBin = Join-Path $env:USERPROFILE '.config\herd-lite\bin'
 Set-Location $root
 
@@ -63,6 +68,22 @@ function Get-EnvValue([string] $name) {
         return $null
     }
     return ($line -replace "^\s*$name\s*=\s*", '').Trim().Trim('"', "'")
+}
+
+# Scrive DB_DATABASE nel .env, subito dopo DB_CONNECTION (toglie le righe DB_DATABASE vecchie,
+# anche commentate). Il percorso va tra apici (contiene spazi) e con le barre "/", che PHP accetta.
+function Set-DatabasePath([string] $path) {
+    $value = $path -replace '\\', '/'
+    $lines = Get-Content '.env' | Where-Object { $_ -notmatch '^\s*#?\s*DB_DATABASE\s*=' }
+    $lines = $lines | ForEach-Object {
+        if ($_ -match '^\s*DB_CONNECTION\s*=') { $_; "DB_DATABASE='$value'" } else { $_ }
+    }
+    [System.IO.File]::WriteAllLines((Join-Path $root '.env'), [string[]] $lines)   # UTF-8 senza BOM
+}
+
+# Stesso percorso? (maiuscole, barre e percorsi relativi non contano)
+function Test-SamePath([string] $a, [string] $b) {
+    return [System.IO.Path]::GetFullPath($a).TrimEnd('\') -ieq [System.IO.Path]::GetFullPath($b).TrimEnd('\')
 }
 
 try {
@@ -116,16 +137,56 @@ try {
     $newEnv = -not (Test-Path '.env')
     if ($newEnv) {
         Write-Step 'Preparo la configurazione (.env)...'
-        New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-        $database = (Join-Path $dataDir 'database.sqlite') -replace '\\', '/'   # PHP accetta le barre "/" anche su Windows
-        $lines = Get-Content '.env.example' | Where-Object { $_ -notmatch '^\s*#?\s*DB_DATABASE\s*=' }
-        $lines = $lines | ForEach-Object {
-            if ($_ -match '^\s*DB_CONNECTION\s*=') { $_; "DB_DATABASE='$database'" } else { $_ }
-        }
-        [System.IO.File]::WriteAllLines((Join-Path $root '.env'), [string[]] $lines)   # UTF-8 senza BOM
+        Copy-Item '.env.example' '.env'
     }
 
-    # 4. Librerie
+    # 4. Archivio dei brani in Documenti\Tab Manager, fuori dalla cartella dell'app.
+    #    Se c'è un archivio in una posizione vecchia, lo si copia nella cartella nuova (se lì non ce n'è
+    #    già uno); il file vecchio non si cancella: si rinomina "database.sqlite.spostato" (così non viene
+    #    ripreso alla prossima installazione) e una sua copia va nella cartella Backup.
+    New-Item -ItemType Directory -Force -Path $dataDir, $backupDir | Out-Null
+    $configured = Get-EnvValue 'DB_DATABASE'
+    if (-not $configured) {
+        $configured = Join-Path $root 'database\database.sqlite'   # predefinito di Laravel
+    }
+    $oldDatabases = @()
+    foreach ($candidate in @($configured, $legacyDatabase)) {
+        if (-not (Test-Path $candidate) -or (Test-SamePath $candidate $database)) {
+            continue
+        }
+        $full = [System.IO.Path]::GetFullPath($candidate)   # "C:/a/b" e "C:\a\b" sono lo stesso file
+        if (-not ($oldDatabases | Where-Object { Test-SamePath $_ $full })) {
+            $oldDatabases += $full
+        }
+    }
+    foreach ($old in $oldDatabases) {
+        $stamp = Get-Date -Format 'yyyy-MM-dd HH-mm-ss'
+        $origin = if (Test-SamePath $old $legacyDatabase) { 'da AppData' } else { "dalla cartella dell'app" }
+        Copy-Item $old (Join-Path $backupDir "$stamp archivio precedente $origin.sqlite")
+        if (-not (Test-Path $database)) {
+            Write-Step "Sposto l'archivio dei brani in $dataDir..."
+            Copy-Item $old $database
+        } else {
+            Write-Host "C'era già un archivio in $dataDir`: quello trovato in $old è stato copiato nella cartella Backup." -ForegroundColor Yellow
+        }
+        try {
+            $renamed = "$old.spostato"
+            if (Test-Path $renamed) {
+                $renamed = "$old.spostato $stamp"   # c'è già un file spostato prima: nome diverso
+            }
+            Rename-Item $old (Split-Path -Leaf $renamed)
+            Write-Host "Il file vecchio resta come $renamed`: si può cancellare quando hai controllato che i brani ci sono."
+        } catch {
+            # Succede se Tab Manager è aperto: la copia è fatta, il file vecchio resta com'è.
+            Write-Host "Non ho potuto rinominare $old (forse Tab Manager è aperto): la copia è fatta, il file vecchio resta com'è." -ForegroundColor Yellow
+        }
+    }
+    if (-not ((Get-EnvValue 'DB_DATABASE') -and (Test-SamePath (Get-EnvValue 'DB_DATABASE') $database))) {
+        Set-DatabasePath $database
+    }
+    Write-Host "Archivio dei brani: $database"
+
+    # 5. Librerie
     Write-Step 'Scarico le librerie PHP (composer install)...'
     Invoke-Checked 'composer' @('install', '--no-interaction', '--no-progress')
 
@@ -137,11 +198,7 @@ try {
     Invoke-Checked 'npm.cmd' @('install', '--no-fund', '--no-audit')
     Invoke-Checked 'npm.cmd' @('run', 'build')
 
-    # 5. Database
-    $database = Get-EnvValue 'DB_DATABASE'
-    if (-not $database) {
-        $database = Join-Path $root 'database\database.sqlite'   # predefinito di Laravel
-    }
+    # 6. Database (prima di aggiornarlo, una copia nella cartella Backup)
     $newDatabase = -not (Test-Path $database)
     if ($newDatabase) {
         Write-Step "Creo il database dei brani: $database"
@@ -150,11 +207,12 @@ try {
         Invoke-Checked 'php' @('artisan', 'migrate', '--force')
         Invoke-Checked 'php' @('artisan', 'db:seed', '--force')
     } else {
-        Write-Step "Aggiorno il database dei brani (i brani restano): $database"
+        Write-Step "Copia di sicurezza dell'archivio, poi aggiorno il database (i brani restano)..."
+        Invoke-Checked 'php' @('artisan', 'tab:backup', "--label=prima dell'aggiornamento")
         Invoke-Checked 'php' @('artisan', 'migrate', '--force')
     }
 
-    # 6. Collegamenti e avvio
+    # 7. Collegamenti e avvio
     Write-Step 'Creo i collegamenti...'
     & (Join-Path $PSScriptRoot 'install-shortcut.ps1')
 
