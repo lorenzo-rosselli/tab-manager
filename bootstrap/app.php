@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Il cookie "theme" (chiaro/scuro) lo scrive il JavaScript dell'interruttore:
+        // non va cifrato, altrimenti Laravel non riuscirebbe a leggerlo.
+        $middleware->encryptCookies(except: ['theme']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
