@@ -745,6 +745,13 @@ Dalla revisione dell'app a fine tappa 6.
 - [x] Codice scritto
 - [ ] Verifica nel browser (con `npm run dev` acceso, oppure `npm run build`)
 
+**Aggiunta: Backspace con la sovrascrittura**
+41. Con INS acceso, **Backspace rimette un trattino** al posto del carattere cancellato, così anche le correzioni non disallineano.
+- Scorciatoia `Backspace` nell'estensione `Overwrite`: il carattere a sinistra del cursore diventa `-` e il cursore torna indietro. Il trattino tiene solo font e dimensione del carattere cancellato (per restare largo uguale), non grassetto, colori o evidenziatore.
+- All'inizio del paragrafo (unire due righe) o con una selezione, e con INS spento, Backspace fa come sempre. Canc non cambia.
+- [x] Verificato (jsdom): `G|--12----` → Backspace → `G|--1-----` → Backspace → `G|--------`, sempre 70 caratteri; trattino senza colore ma con la dimensione del carattere cancellato; a inizio riga non interviene
+- [ ] Verifica nel browser
+
 ---
 
 ## Tappa 7 – Test

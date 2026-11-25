@@ -28,7 +28,8 @@
 |   in fondo al foglio una riga per corda, per esempio "G|" seguito da 68 trattini.
 | - Sovrascrittura (pulsante "INS" nella barra o tasto Ins, come in Word): scrivendo, ogni carattere
 |   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
-|   restano allineate. La scelta resta salvata nel browser (localStorage).
+|   restano allineate; Backspace rimette un trattino al posto del carattere cancellato.
+|   La scelta resta salvata nel browser (localStorage).
 */
 
 import { Editor, Extension, Node } from '@tiptap/core';
@@ -131,6 +132,8 @@ const PageBreak = Node.create({
 // sostituisce quello a destra del cursore (per esempio un "5" prende il posto di un "-" e la riga
 // della tabulatura non si allunga). Vale solo scrivendo senza selezione e dentro lo stesso paragrafo:
 // in fondo alla riga, o con del testo selezionato, si scrive come sempre.
+// Backspace, con la modalità accesa, non accorcia la riga: il carattere prima del cursore diventa "-"
+// e il cursore torna indietro di uno (all'inizio del paragrafo o con una selezione fa come sempre).
 const Overwrite = Extension.create({
     name: 'overwrite',
 
@@ -173,7 +176,36 @@ const Overwrite = Extension.create({
     },
 
     addKeyboardShortcuts() {
-        return { Insert: () => this.editor.commands.toggleOverwrite() }; // tasto Ins
+        return {
+            Insert: () => this.editor.commands.toggleOverwrite(), // tasto Ins
+            Backspace: () => {
+                if (!this.storage.enabled) {
+                    return false;
+                }
+
+                const { state, view } = this.editor;
+                const { empty, from, $from } = state.selection;
+                const before = $from.nodeBefore; // cosa c'è a sinistra del cursore
+
+                if (!empty || !before?.isText) {
+                    return false; // Backspace normale
+                }
+
+                // Il trattino tiene solo font e dimensione del carattere cancellato (così resta largo
+                // uguale e la riga allineata), non grassetto, colori o evidenziatore.
+                const style = before.marks.find((mark) => mark.type.name === 'textStyle');
+                const { fontFamily = null, fontSize = null } = style?.attrs ?? {};
+                const marks = fontFamily || fontSize
+                    ? [state.schema.marks.textStyle.create({ fontFamily, fontSize })]
+                    : [];
+
+                const tr = state.tr.replaceWith(from - 1, from, state.schema.text('-', marks));
+                tr.setSelection(TextSelection.create(tr.doc, from - 1));
+                view.dispatch(tr.scrollIntoView());
+
+                return true;
+            },
+        };
     },
 
     addProseMirrorPlugins() {
