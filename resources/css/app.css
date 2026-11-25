@@ -35,6 +35,12 @@
     outline: none;
 }
 
+/* Sovrascrittura accesa (pulsante "INS"): cursore a blocco, come segnale. I browser che non
+   conoscono caret-shape mostrano il cursore normale. */
+.tab-sheet .ProseMirror.is-overwrite {
+    caret-shape: block;
+}
+
 /*
 | Pagine A4 (resources/js/tab-pages.js): il testo sta in .tab-sheet, con 2 cm di margine;
 | dietro, in .tab-paper-pages, le pagine bianche (21 × 29,7 cm, 1 cm di distanza tra l'una e l'altra)

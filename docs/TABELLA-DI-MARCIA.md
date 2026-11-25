@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto; Annulla sicuro |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto; Annulla sicuro; sovrascrittura |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -713,6 +713,37 @@ Dalla revisione dell'app a fine tappa 6.
 **Avanzamento**
 - [x] Codice scritto
 - [ ] Verifica nel browser (anche: errore di validazione e poi Annulla)
+
+### Parte 16 – Sovrascrittura (25/11/2026) 🔄
+
+Dalla revisione dell'app a fine tappa 6.
+
+**Richieste**
+39. **Scrittura in sovrascrittura**, come il tasto Ins di Word: scrivendo su un trattino la cifra lo sostituisce e la riga non si disallinea. Con un pulsante per accenderla e spegnerla.
+40. Trattini delle tabulature inserite automaticamente **raddoppiati** (da 34 a 68), per avere più spazio.
+
+**Decisioni**
+- Nuova estensione Tiptap `Overwrite` in `tab-editor.js`: un plugin con `handleTextInput` che, con la modalità accesa, sostituisce il carattere a destra del cursore. Si comporta come Word: sostituisce qualsiasi carattere (non solo i trattini), così si può anche correggere una cifra sbagliata. A fine riga o con una selezione si scrive come sempre; Backspace, Canc e l'incolla non cambiano.
+- Pulsante **"INS"** in fondo alla barra (scritta, come G/C/S) e tasto **Ins**. Spenta all'inizio; la scelta resta salvata nel browser (`localStorage`), così chi scrive tabulature la trova già accesa.
+- Segnale visivo: cursore a blocco (`caret-shape: block`) quando è accesa, oltre al pulsante premuto.
+- 68 trattini: `G|` + 68 = 70 caratteri, nella riga di 17 cm a 10 pt ce ne stanno circa 80.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `resources/js/tab-editor.js` | Estensione `Overwrite` (comando `toggleOverwrite`, tasto Ins, `handleTextInput`); stato del pulsante nella barra; `STAFF_DASHES` = 68 |
+| `resources/views/songs/_form.blade.php` | Pulsante "INS" nella barra |
+| `resources/css/app.css` | Cursore a blocco con `.is-overwrite` |
+
+**Verifiche fatte in fase di sviluppo** (jsdom)
+- [x] Senza INS un "5" allunga la riga (71 caratteri); con INS "1" e "2" sostituiscono due trattini (`G|--12----`, sempre 70 caratteri) e il cursore avanza
+- [x] A fine riga con INS si aggiunge; con una selezione si sostituisce la selezione
+- [x] Pulsante e tasto Ins accendono e spengono; `aria-pressed`, classe `is-overwrite` e `localStorage` aggiornati
+- [x] Tabulatura vuota di 70 caratteri
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Verifica nel browser (con `npm run dev` acceso, oppure `npm run build`)
 
 ---
 

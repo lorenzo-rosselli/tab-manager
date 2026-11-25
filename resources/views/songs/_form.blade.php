@@ -110,7 +110,8 @@
           la zona scrivibile (17 × 25,7 cm, come nel .docx) è segnata da un bordo tratteggiato,
           il testo va a capo al margine e passa alla pagina successiva quando la pagina è piena.
         - Gli ultimi pulsanti della barra inseriscono un'interruzione di pagina (anche con Ctrl+Invio)
-          e, se è scelto il numero di corde, una tabulatura vuota in fondo al foglio.
+          e, se è scelto il numero di corde, una tabulatura vuota in fondo al foglio; "INS" accende
+          e spegne la sovrascrittura (anche con il tasto Ins).
         L'editor (Tiptap) è in resources/js/tab-editor.js e scrive il documento nel campo nascosto "tab".
     --}}
     <div>
@@ -200,6 +201,13 @@
                         aria-label="Inserisci tabulatura vuota" disabled
                         class="{{ $button }} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent">
                     @include('icons.tab-staff')
+                </button>
+
+                {{-- Sovrascrittura (come il tasto Ins di Word): acceso = premuto (aria-pressed). --}}
+                <button type="button" title="Sovrascrittura (Ins): i caratteri scritti sostituiscono quelli a destra del cursore"
+                        aria-label="Sovrascrittura" aria-pressed="false"
+                        data-command="toggleOverwrite" class="{{ $button }}">
+                    <span class="text-xs font-semibold leading-none" aria-hidden="true">INS</span>
                 </button>
             </div>
 

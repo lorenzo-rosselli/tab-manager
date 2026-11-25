@@ -25,12 +25,15 @@
 | - Numero di corde (campo accanto allo strumento): il menu mostra solo le scelte dello strumento e
 |   propone la prima (basso 4, chitarra 6); per la voce resta "—" ed è disattivato. Con un numero di corde
 |   scelto, il pulsante "Inserisci tabulatura vuota" aggiunge
-|   in fondo al foglio una riga per corda, per esempio "G|----------------------------------".
+|   in fondo al foglio una riga per corda, per esempio "G|" seguito da 68 trattini.
+| - Sovrascrittura (pulsante "INS" nella barra o tasto Ins, come in Word): scrivendo, ogni carattere
+|   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
+|   restano allineate. La scelta resta salvata nel browser (localStorage).
 */
 
 import { Editor, Extension, Node } from '@tiptap/core';
 import { Fragment, Slice } from '@tiptap/pm/model';
-import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -40,7 +43,8 @@ import { MARGIN, drawPages, paginate, paperHeight, spacer } from './tab-pages.js
 
 const DEFAULT_FONT = 'Lucida Console';
 const DEFAULT_SIZE = 10;
-const STAFF_DASHES = 34; // trattini di ogni riga della tabulatura vuota
+const STAFF_DASHES = 68; // trattini di ogni riga della tabulatura vuota ("G|" + 68 = 70 caratteri: ci stanno nella riga)
+const OVERWRITE_KEY = 'tab-manager-overwrite'; // dove il browser ricorda se la sovrascrittura è accesa
 
 // Attributi in più sui paragrafi per riconoscere le righe automatiche.
 // keepOnSplit: false → andando a capo dentro una riga automatica, il nuovo paragrafo è normale.
@@ -120,6 +124,84 @@ const PageBreak = Node.create({
 
     addKeyboardShortcuts() {
         return { 'Mod-Enter': () => this.editor.commands.setPageBreak() }; // Ctrl+Invio, come in Word
+    },
+});
+
+// Sovrascrittura, come il tasto Ins di Word: con la modalità accesa, ogni carattere scritto
+// sostituisce quello a destra del cursore (per esempio un "5" prende il posto di un "-" e la riga
+// della tabulatura non si allunga). Vale solo scrivendo senza selezione e dentro lo stesso paragrafo:
+// in fondo alla riga, o con del testo selezionato, si scrive come sempre.
+const Overwrite = Extension.create({
+    name: 'overwrite',
+
+    addStorage() {
+        let enabled = false;
+
+        try {
+            enabled = window.localStorage.getItem(OVERWRITE_KEY) === '1';
+        } catch {
+            // browser senza localStorage: si parte spenti
+        }
+
+        return { enabled };
+    },
+
+    onCreate() {
+        // Classe sul foglio: con la sovrascrittura il cursore diventa un blocco (vedi app.css).
+        this.editor.view.dom.classList.toggle('is-overwrite', this.storage.enabled);
+    },
+
+    addCommands() {
+        return {
+            toggleOverwrite: () => ({ editor, tr, dispatch }) => {
+                if (dispatch) {
+                    const storage = editor.storage.overwrite;
+                    storage.enabled = !storage.enabled;
+                    editor.view.dom.classList.toggle('is-overwrite', storage.enabled);
+                    tr.setMeta('overwrite', storage.enabled); // la transazione aggiorna la barra
+
+                    try {
+                        window.localStorage.setItem(OVERWRITE_KEY, storage.enabled ? '1' : '0');
+                    } catch {
+                        // non si può ricordare la scelta: vale solo per questa pagina
+                    }
+                }
+
+                return true;
+            },
+        };
+    },
+
+    addKeyboardShortcuts() {
+        return { Insert: () => this.editor.commands.toggleOverwrite() }; // tasto Ins
+    },
+
+    addProseMirrorPlugins() {
+        const storage = this.storage;
+
+        return [new Plugin({
+            key: new PluginKey('overwrite'),
+            props: {
+                handleTextInput(view, from, to, text) {
+                    if (!storage.enabled || from !== to) {
+                        return false; // scrittura normale
+                    }
+
+                    const after = view.state.doc.resolve(from).nodeAfter; // cosa c'è a destra del cursore
+                    if (!after?.isText) {
+                        return false; // fine del paragrafo (o un a capo): si aggiunge come sempre
+                    }
+
+                    const length = Math.min(text.length, after.text.length);
+                    const tr = view.state.tr.insertText(text, from, from + length);
+                    // Il cursore va dopo il carattere scritto (da solo resterebbe davanti).
+                    tr.setSelection(TextSelection.create(tr.doc, from + text.length));
+                    view.dispatch(tr.scrollIntoView());
+
+                    return true;
+                },
+            },
+        })];
     },
 });
 
@@ -391,6 +473,7 @@ if (element) {
             TextAlign.configure({ types: ['paragraph'], alignments: ['left', 'center', 'right'] }),
             AutoLine,
             PageBreak,
+            Overwrite,
             Pagination,
         ],
         content: JSON.parse(input.value),
@@ -500,7 +583,9 @@ if (element) {
             const { command, value } = button.dataset;
             const active = command === 'align'
                 ? (editor.getAttributes('paragraph').textAlign || 'left') === value
-                : editor.isActive(button.dataset.mark);
+                : command === 'toggleOverwrite'
+                    ? editor.storage.overwrite.enabled
+                    : editor.isActive(button.dataset.mark);
 
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
