@@ -16,7 +16,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-$root = Split-Path -Parent $PSScriptRoot   # cartella del progetto (questo file è in "desktop")
+$root = Split-Path -Parent $PSScriptRoot   # cartella del progetto (questo file è in "windows")
 $port = 8765
 $url = "http://127.0.0.1:$port"
 $edgeProfile = Join-Path $env:LOCALAPPDATA 'TabManager\Edge'

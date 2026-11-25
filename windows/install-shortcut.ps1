@@ -3,12 +3,12 @@
 | Crea il collegamento "Tab Manager" sul desktop e nella cartella del progetto
 |--------------------------------------------------------------------------
 | Lo esegue in automatico "Installa Tab Manager.cmd". A mano, dal terminale nella cartella del progetto:
-|     powershell -NoProfile -File desktop\install-shortcut.ps1
+|     powershell -NoProfile -File windows\install-shortcut.ps1
 | (funziona da PowerShell e dal Prompt dei comandi; nel Prompt dei comandi scrivere solo
-| .\desktop\install-shortcut.ps1 aprirebbe il file nel Blocco note invece di eseguirlo)
+| .\windows\install-shortcut.ps1 aprirebbe il file nel Blocco note invece di eseguirlo)
 |
-| Il collegamento avvia desktop\tab-manager.ps1 con "conhost --headless", cioè senza nessuna
-| finestra del terminale, e usa l'icona desktop\tab-manager.ico. "-ExecutionPolicy Bypass" vale solo
+| Il collegamento avvia windows\tab-manager.ps1 con "conhost --headless", cioè senza nessuna
+| finestra del terminale, e usa l'icona windows\tab-manager.ico. "-ExecutionPolicy Bypass" vale solo
 | per quell'avvio: così l'app parte anche su un PC dove PowerShell non esegue script (impostazione
 | predefinita "Restricted"), senza cambiare le impostazioni del PC.
 | Contiene percorsi assoluti: se la cartella del progetto viene spostata, basta eseguire di nuovo
@@ -27,9 +27,9 @@ foreach ($folder in @($desktop, $root)) {
 
     $link = $shell.CreateShortcut($path)
     $link.TargetPath = Join-Path $env:SystemRoot 'System32\conhost.exe'
-    $link.Arguments = "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$root\desktop\tab-manager.ps1`""
+    $link.Arguments = "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$root\windows\tab-manager.ps1`""
     $link.WorkingDirectory = $root
-    $link.IconLocation = "$root\desktop\tab-manager.ico,0"
+    $link.IconLocation = "$root\windows\tab-manager.ico,0"
     $link.Description = 'Apri Tab Manager'
     $link.Save()
 

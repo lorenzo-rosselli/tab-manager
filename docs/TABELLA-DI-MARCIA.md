@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -575,6 +575,30 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 - [x] Commit e push
 - [ ] Nuova prova sul PC con l'altro PHP (scaricare di nuovo lo ZIP o sostituire `desktop\setup.ps1` e `desktop\tab-manager.ps1`)
 - [ ] Prova su un PC (o un account Windows) senza PHP e Node: ZIP sbloccato, installazione, collegamento, aggiornamento con un nuovo ZIP
+
+### Parte 11 – Pulizia e riordino delle cartelle (25/11/2026) 🔄
+
+**Richieste**
+30. Fare **pulizia** dei file inutili nella cartella del progetto.
+31. Proporre un'**organizzazione migliore** in cartelle (scelte: A e B qui sotto).
+
+**Pulizia**
+- Eliminata `Claude outputs/` (solo l'anteprima dell'icona, finita per sbaglio nei commit).
+- Eliminati i log `storage/logs/browser.log` (Laravel Boost) e `laravel.log`: Laravel li ricrea quando servono, e git li ignora.
+- L'utente ha eliminato `AGENTS.md` e `CLAUDE.md` (file di linee guida di Laravel Boost per gli assistenti AI, non usati). Nessuno script li rigenera da solo.
+- Lasciati apposta: `app/Models/User.php` e `database/factories/UserFactory.php` (impianto base di Laravel, collegato alla configurazione dell'accesso); `tests/*/ExampleTest.php` (si sostituiscono nella tappa 7); `.npmrc` (sicurezza di Laravel 13).
+- Trovato: `public/build` era ancora quella del 24/11. Il collegamento funzionava solo perché era acceso `npm run dev`: va rifatto `npm run build` (lo fa anche `Installa Tab Manager.cmd`).
+
+**Riordino**
+- **A.** `SPECIFICHE-TABULATURE.md` e `TABELLA-DI-MARCIA.md` spostati in **`docs/`**; nella cartella principale resta il `README.md` (lo mostra GitHub).
+- **B.** Cartella `desktop/` rinominata **`windows/`**: "desktop" si confondeva con il Desktop di Windows. Aggiornati i percorsi in `Installa Tab Manager.cmd`, `windows/install-shortcut.ps1` (collegamento e icona), commenti di `windows/tab-manager.ps1` e `.gitignore`. Nelle parti precedenti di questa tabella `desktop/` va letto come `windows/`.
+- Restano nella cartella principale `Installa Tab Manager.cmd` e il collegamento `Tab Manager.lnk`, per trovarli subito. Il collegamento lo crea l'installazione (`windows/install-shortcut.ps1`) insieme a quello sul desktop; non è su git.
+- Non spostate le cartelle standard di Laravel.
+
+**Avanzamento**
+- [x] Pulizia e spostamenti fatti
+- [ ] Rilanciare `Installa Tab Manager.cmd`: ricrea i collegamenti (quelli vecchi puntano a `desktop\`) e rifà `npm run build`
+- [ ] Commit (git vedrà gli spostamenti come rinomine)
 
 ---
 

@@ -26,5 +26,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Collegamento all'app desktop (percorsi assoluti di questo computer: lo crea desktop/install-shortcut.ps1)
+# Collegamento all'app desktop (percorsi assoluti di questo computer: lo crea windows/install-shortcut.ps1)
 /Tab Manager.lnk
