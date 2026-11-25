@@ -15,6 +15,8 @@ return [
     'required' => 'Il campo :attribute è obbligatorio.',
     'string' => 'Il campo :attribute deve essere un testo.',
     'in' => 'Il valore scelto per :attribute non è valido.',
+    'boolean' => 'Il campo :attribute deve essere sì o no.',
+    'json' => 'Il contenuto di :attribute non è valido.',
 
     'max' => [
         'string' => 'Il campo :attribute non può superare :max caratteri.',
@@ -24,10 +26,11 @@ return [
     'attributes' => [
         'title' => 'titolo',
         'artist' => 'artista',
+        'band' => 'gruppo',
         'instrument' => 'strumento',
-        'tuning' => 'accordatura',
+        'show_instrument' => 'mostra strumento',
+        'show_band' => 'mostra gruppo',
         'tab' => 'tabulatura',
-        'notes' => 'note',
     ],
 
 ];

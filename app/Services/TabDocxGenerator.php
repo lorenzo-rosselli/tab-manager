@@ -7,9 +7,10 @@ use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\Shared\Converter;
+use PhpOffice\PhpWord\SimpleType\Jc;
 
 /**
- * Crea il documento Word (.docx) di un brano, impaginato come da specifiche (sezione 7).
+ * Crea il documento Word (.docx) di un brano: è esattamente il contenuto del suo foglio.
  */
 class TabDocxGenerator
 {
@@ -23,6 +24,10 @@ class TabDocxGenerator
 
         $phpWord = new PhpWord;
 
+        // Formattazione del testo che non ne ha una propria.
+        $phpWord->setDefaultFontName(Song::DEFAULT_FONT);
+        $phpWord->setDefaultFontSize(Song::DEFAULT_FONT_SIZE);
+
         // Pagina A4 con margini di 2 cm (PHPWord misura in "twip": 1 cm = 567 twip).
         $margin = Converter::cmToTwip(2);
         $section = $phpWord->addSection([
@@ -33,30 +38,39 @@ class TabDocxGenerator
             'marginRight' => $margin,
         ]);
 
-        // Intestazione: titolo, artista, riga info.
-        $section->addText($song->title, ['size' => 18, 'bold' => true], ['spaceAfter' => 0]);
-        $section->addText($song->artist, ['size' => 13, 'italic' => true], ['spaceAfter' => Converter::pointToTwip(6)]);
-        $section->addText(
-            'Strumento: '.$song->instrument->label().' – Accordatura: '.$song->tuning,
-            ['size' => 10],
-            ['spaceAfter' => Converter::pointToTwip(6)],
-        );
+        // Ogni paragrafo del foglio diventa un paragrafo Word (interlinea singola, nessuno spazio
+        // prima/dopo); ogni pezzo di testo mantiene la sua formattazione. I paragrafi vuoti restano righe vuote.
+        foreach (TabDocument::paragraphs($song->tab) as $paragraph) {
+            $textRun = $section->addTextRun([
+                'spaceBefore' => 0,
+                'spaceAfter' => 0,
+                'lineHeight' => 1.0,
+                // LEFT/RIGHT sono i valori "classici" del formato .docx, letti da tutte le versioni di Word
+                // (PHPWord li segna come deprecati a favore di START/END, meno compatibili).
+                'alignment' => match ($paragraph['align']) {
+                    'center' => Jc::CENTER,
+                    'right' => Jc::RIGHT,
+                    default => Jc::LEFT,
+                },
+            ]);
 
-        // Note (facoltative): una riga del testo = un paragrafo.
-        if (filled($song->notes)) {
-            foreach ($this->lines($song->notes) as $line) {
-                $section->addText($line, ['size' => 10], ['spaceAfter' => 0]);
+            foreach ($paragraph['runs'] as $run) {
+                if (isset($run['break'])) {
+                    $textRun->addTextBreak();
+
+                    continue;
+                }
+
+                $textRun->addText($run['text'], [
+                    'name' => $run['font'] ?? Song::DEFAULT_FONT,
+                    'size' => $run['size'] ?? Song::DEFAULT_FONT_SIZE,
+                    'bold' => $run['bold'],
+                    'italic' => $run['italic'],
+                    'underline' => $run['underline'] ? 'single' : 'none',
+                    'color' => $run['color'] ? ltrim($run['color'], '#') : null,           // null = automatico (nero)
+                    'fgColor' => $run['highlight'] ? Song::HIGHLIGHTS[$run['highlight']][1] : null, // evidenziatore di Word
+                ]);
             }
-            $section->addTextBreak();
-        }
-
-        // Tabulatura: Courier New 10 pt, una riga = un paragrafo, interlinea singola, nessuno spazio prima/dopo.
-        // Le righe vuote restano paragrafi vuoti, così i blocchi restano separati.
-        $tabFont = ['name' => 'Courier New', 'size' => 10];
-        $tabParagraph = ['spaceBefore' => 0, 'spaceAfter' => 0, 'lineHeight' => 1.0];
-
-        foreach ($this->lines($song->tab) as $line) {
-            $section->addText($line, $tabFont, $tabParagraph);
         }
 
         // Salvataggio in un file temporaneo: il controller lo invia e poi lo cancella.
@@ -77,18 +91,5 @@ class TabDocxGenerator
         $name = trim(preg_replace('/\s+/', ' ', $name));
 
         return ($name !== '' ? $name : 'tabulatura').'.docx';
-    }
-
-    /**
-     * Divide un testo in righe, normalizzando gli a capo di Windows (\r\n) e quelli vecchi (\r).
-     * Le righe vuote in fondo al testo vengono tolte; quelle in mezzo restano.
-     *
-     * @return list<string>
-     */
-    private function lines(string $text): array
-    {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-
-        return explode("\n", rtrim($text, "\n"));
     }
 }

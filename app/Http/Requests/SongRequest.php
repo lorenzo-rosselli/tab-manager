@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Services\TabDocument;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -29,10 +31,33 @@ class SongRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'artist' => ['required', 'string', 'max:255'],
+            'band' => ['nullable', 'string', 'max:255'],
             'instrument' => ['required', 'in:bass,guitar'],
-            'tuning' => ['required', 'string', 'max:50'],
-            'tab' => ['required', 'string'],
-            'notes' => ['nullable', 'string'],
+            'show_instrument' => ['required', 'boolean'],
+            'show_band' => ['required', 'boolean'],
+            // Il foglio arriva come testo JSON (lo scrive l'editor in un campo nascosto)
+            // e deve contenere almeno un carattere.
+            'tab' => ['required', 'json', function (string $attribute, mixed $value, Closure $fail) {
+                $doc = json_decode((string) $value, true);
+
+                if (! is_array($doc) || ! TabDocument::hasText($doc)) {
+                    $fail('validation.required')->translate();
+                }
+            }],
         ];
+    }
+
+    /**
+     * Dati validati pronti per il modello: il foglio passa da testo JSON ad array
+     * (il cast 'array' del modello lo riconverte in JSON quando salva).
+     *
+     * @return array<string, mixed>
+     */
+    public function songData(): array
+    {
+        $data = $this->validated();
+        $data['tab'] = json_decode($data['tab'], true);
+
+        return $data;
     }
 }
