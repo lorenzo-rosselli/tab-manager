@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -411,6 +411,7 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 21. Le tavolozze di **colore ed evidenziatore** si chiudono anche **cliccando in qualsiasi punto** della pagina (prima restavano aperte e si sovrapponevano).
 22. Il testo **incollato** con colore o evidenziatore deve **mantenerli**.
 23. Testo della modale di eliminazione: "Artista - Titolo verrà eliminato definitivamente".
+24. Tra gli strumenti anche la **Voce**.
 
 **Decisioni**
 - Ricerca per strumento: si confronta il testo con le etichette italiane dell'Enum (`label()`) e si filtra con `orWhereIn('instrument', ...)`. Basta anche una parte del nome ("chit").
@@ -421,6 +422,7 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 - Soluzione nell'editor: la formattazione incollata viene ripulita (`transformPasted`). Il colore del testo diventa `#RRGGBB`, con il quasi nero trattato come "Automatico" e il quasi bianco ignorato. L'evidenziatore, riconosciuto anche dagli sfondi, diventa il più vicino tra quelli di Word, mentre gli sfondi bianchi o lontani vengono ignorati. Già che c'eravamo, si puliscono anche font e dimensione incollati da Word (`"Lucida Console"` con le virgolette, `10.0pt`).
 - Il colore del testo non è più limitato alla tavolozza: il foglio e il Word ammettono qualsiasi `#RRGGBB` (Word lo supporta). L'evidenziatore resta limitato alla tavolozza di Word.
 - Lato server `TabDocument::hexColor()` converte anche `rgb(...)`: si recuperano i colori dei brani salvati prima della correzione.
+- Voce: nuovo caso `Voice = 'voice'` dell'Enum, etichetta "Voce". La validazione legge i valori ammessi dall'Enum (`Rule::in(...)`), quindi l'Enum è l'unico punto da cambiare per aggiungere uno strumento. La colonna resta `string(10)`: nessuna modifica al database, nessun `migrate:fresh`.
 
 **File coinvolti**
 | File | Modifica |
@@ -434,6 +436,9 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 | `resources/js/tab-editor.js` | Esc; chiusura delle tavolozze con clic esterno; evidenziatore riconosciuto dagli sfondi; pulizia di colori, evidenziatori, font e dimensioni incollati |
 | `app/Services/TabDocument.php` | Nuovo `hexColor()`; qualsiasi colore del testo `#RRGGBB` |
 | `app/Models/Song.php` | Commento di `TEXT_COLORS` (è la tavolozza della barra) |
+| `app/Enums/Instrument.php` | Nuovo caso `Voice` ("Voce") |
+| `app/Http/Requests/SongRequest.php` | `instrument` validato con i valori dell'Enum |
+| `database/migrations/2026_11_24_182440_create_songs_table.php` | Solo il commento della colonna `instrument` |
 
 **Verifiche fatte in fase di sviluppo**
 - [x] Editor (jsdom): incolla dal foglio (colore `rgb` → `#C00000`, evidenziatore giallo), da Word (`color:#C00000`, `background:yellow`, `mso-highlight`, `color:black` → automatico, font senza virgolette), da una pagina scura (testo bianco e sfondo scuro ignorati, sfondo quasi giallo → giallo)

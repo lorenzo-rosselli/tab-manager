@@ -29,10 +29,12 @@
         </div>
     </div>
 
-    {{-- Il foglio, come nel Word: A4 (21 cm) con margini di 2 cm.
+    {{-- Il foglio, come nel Word: pagine A4 (21 × 29,7 cm) con margini di 2 cm, disegnate da
+         resources/js/tab-pages.js (data-paginate) dietro al testo.
          TabDocument::toHtml() fa l'escaping di tutto il testo, quindi si può stampare con {!! !!}. --}}
     <div class="overflow-x-auto rounded-md bg-gray-200 p-6 dark:bg-gray-800 sm:p-10">
-        <div class="mx-auto w-[21cm] bg-white p-[2cm] shadow-lg shadow-black/20 dark:shadow-black/50">
+        <div class="tab-paper" data-paginate>
+            <div class="tab-paper-pages" aria-hidden="true"></div>
             <div class="tab-sheet">{!! \App\Services\TabDocument::toHtml($song->tab) !!}</div>
         </div>
     </div>
@@ -43,4 +45,6 @@
             @include('icons.arrow-left')
         </a>
     </p>
+
+    @vite('resources/js/tab-pages.js')
 @endsection

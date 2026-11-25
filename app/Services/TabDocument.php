@@ -70,17 +70,30 @@ class TabDocument
 
     /**
      * Legge il documento e restituisce solo ciò che l'app conosce, già controllato:
-     * una lista di paragrafi, ognuno con l'allineamento e i suoi pezzi di testo ("run").
+     * una lista di paragrafi, ognuno con l'allineamento, i suoi pezzi di testo ("run") e pageBreakBefore
+     * (vero se prima del paragrafo c'è un'interruzione di pagina: il paragrafo inizia su una pagina nuova).
+     * Due interruzioni di fila danno una pagina vuota (un paragrafo vuoto su una pagina a sé);
+     * un'interruzione in fondo al foglio, senza niente dopo, viene ignorata.
      * Font, dimensioni e colori non ammessi vengono ignorati (resta il default).
      *
      * @param  array<string, mixed>|null  $doc
-     * @return list<array{align: string, runs: list<array{break?: true, text?: string, bold?: bool, italic?: bool, underline?: bool, font?: ?string, size?: ?int, color?: ?string, highlight?: ?string}>}>
+     * @return list<array{align: string, pageBreakBefore: bool, runs: list<array{break?: true, text?: string, bold?: bool, italic?: bool, underline?: bool, font?: ?string, size?: ?int, color?: ?string, highlight?: ?string}>}>
      */
     public static function paragraphs(?array $doc): array
     {
         $paragraphs = [];
+        $pageBreak = false; // c'è un'interruzione di pagina in attesa del paragrafo successivo
 
         foreach ($doc['content'] ?? [] as $node) {
+            if (($node['type'] ?? null) === 'pageBreak') {
+                if ($pageBreak) {
+                    $paragraphs[] = ['align' => 'left', 'pageBreakBefore' => true, 'runs' => []];
+                }
+                $pageBreak = true;
+
+                continue;
+            }
+
             if (($node['type'] ?? null) !== 'paragraph') {
                 continue;
             }
@@ -139,8 +152,10 @@ class TabDocument
 
             $paragraphs[] = [
                 'align' => array_key_exists((string) $align, Song::ALIGNMENTS) ? $align : 'left',
+                'pageBreakBefore' => $pageBreak,
                 'runs' => $runs,
             ];
+            $pageBreak = false;
         }
 
         return $paragraphs;
@@ -208,6 +223,11 @@ class TabDocument
                 }
 
                 $inner .= $text;
+            }
+
+            // L'interruzione di pagina è un <div> invisibile: resources/js/tab-pages.js lo usa per andare a pagina nuova.
+            if ($paragraph['pageBreakBefore']) {
+                $html .= '<div class="tab-page-break" data-page-break></div>';
             }
 
             // Un paragrafo vuoto resta una riga vuota.

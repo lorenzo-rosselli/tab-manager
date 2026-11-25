@@ -18,14 +18,20 @@
 |   Anche font e dimensione vengono puliti ("10.0pt" → "10pt", virgolette tolte).
 | - Le tavolozze dei colori si chiudono cliccando fuori o con Esc; con nessuna tavolozza aperta,
 |   Esc porta all'elenco dei brani.
+| - Pagine: il foglio è mostrato su pagine A4 separate come in Word (calcolo in resources/js/tab-pages.js).
+|   L'interruzione di pagina (pulsante nella barra o Ctrl+Invio) fa iniziare su una pagina nuova
+|   il paragrafo che la segue, anche nel Word.
 */
 
-import { Editor, Extension } from '@tiptap/core';
+import { Editor, Extension, Node } from '@tiptap/core';
 import { Fragment, Slice } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
+import { MARGIN, drawPages, paginate, paperHeight, spacer } from './tab-pages.js';
 
 const DEFAULT_FONT = 'Lucida Console';
 const DEFAULT_SIZE = 10;
@@ -53,6 +59,61 @@ const AutoLine = Extension.create({
                 },
             },
         }];
+    },
+});
+
+// Interruzione di pagina: un blocco senza testo; il paragrafo che la segue inizia su una pagina nuova
+// (nel Word quel paragrafo ha "Anteponi interruzione di pagina"). Nel foglio si vede come una riga
+// tratteggiata con la scritta "Interruzione di pagina"; nell'anteprima non si vede.
+const PageBreak = Node.create({
+    name: 'pageBreak',
+    group: 'block',
+    atom: true,
+    selectable: true,
+
+    parseHTML() {
+        return [{ tag: 'div[data-page-break]' }];
+    },
+
+    renderHTML() {
+        return ['div', { 'data-page-break': '', class: 'tab-page-break' }, ['span', 'Interruzione di pagina']];
+    },
+
+    addCommands() {
+        return {
+            // Come in Word: il testo dopo il cursore va sulla pagina nuova, e il cursore con lui
+            // (a fine riga si crea un paragrafo vuoto sulla pagina nuova).
+            setPageBreak: () => ({ tr, dispatch }) => {
+                if (!dispatch) {
+                    return true;
+                }
+
+                tr.deleteSelection();
+                const { $from } = tr.selection;
+
+                if (!$from.parent.isTextblock) {
+                    tr.insert(tr.selection.to, this.type.create());
+
+                    return true;
+                }
+
+                if ($from.parentOffset > 0) {
+                    // Il nuovo paragrafo tiene l'allineamento ma non è una riga automatica.
+                    const attrs = { ...$from.parent.attrs, auto: null, autoText: null };
+                    tr.split($from.pos, 1, [{ type: $from.parent.type, attrs }]);
+                }
+
+                // Ora il cursore è all'inizio del paragrafo che deve iniziare sulla pagina nuova.
+                tr.insert(tr.selection.$from.before(), this.type.create());
+                tr.scrollIntoView();
+
+                return true;
+            },
+        };
+    },
+
+    addKeyboardShortcuts() {
+        return { 'Mod-Enter': () => this.editor.commands.setPageBreak() }; // Ctrl+Invio, come in Word
     },
 });
 
@@ -209,6 +270,89 @@ if (element) {
         return Fragment.fromArray(nodes);
     }
 
+    /* ---------------- Pagine ---------------- */
+
+    // Dopo ogni modifica si misurano i blocchi del foglio e si inseriscono gli "spazi" che portano
+    // alla pagina successiva i paragrafi che non ci stanno più. Gli spazi sono decorazioni:
+    // si vedono, ma non fanno parte del documento (né del JSON né del Word).
+    const paper = element.closest('.tab-paper');
+    const pagesLayer = paper.querySelector('.tab-paper-pages');
+    const pagesKey = new PluginKey('tabPages');
+
+    function measurePages(view) {
+        const positions = [];
+        const blocks = [];
+
+        view.state.doc.forEach((node, offset) => {
+            const dom = view.nodeDOM(offset);
+            positions.push(offset);
+            blocks.push({
+                height: dom instanceof HTMLElement ? dom.getBoundingClientRect().height : 0,
+                pageBreak: node.type.name === 'pageBreak',
+            });
+        });
+
+        const { breaks, pages } = paginate(blocks);
+        const height = paperHeight(pages);
+
+        drawPages(pagesLayer, pages);
+        paper.style.height = `${height}px`;
+        view.dom.style.minHeight = `${height - 2 * MARGIN}px`; // si può cliccare fino in fondo all'ultima pagina
+
+        // Si aggiornano le decorazioni solo se gli spazi sono cambiati (altrimenti si misurerebbe all'infinito).
+        const wanted = breaks.map((item) => ({ pos: positions[item.index], height: Math.round(item.height * 100) / 100 }));
+        const current = pagesKey.getState(view.state).find()
+            .map((decoration) => ({ pos: decoration.from, height: decoration.spec.height }))
+            .sort((a, b) => a.pos - b.pos);
+
+        if (JSON.stringify(wanted) !== JSON.stringify(current)) {
+            const decorations = wanted.map(({ pos, height: gap }) => Decoration.widget(pos, () => spacer(gap), {
+                side: -1, key: `page-${pos}-${gap}`, height: gap, ignoreSelection: true,
+            }));
+
+            view.dispatch(view.state.tr
+                .setMeta(pagesKey, DecorationSet.create(view.state.doc, decorations))
+                .setMeta('addToHistory', false));
+        }
+    }
+
+    const Pagination = Extension.create({
+        name: 'pagination',
+
+        addProseMirrorPlugins() {
+            return [new Plugin({
+                key: pagesKey,
+                state: {
+                    init: () => DecorationSet.empty,
+                    // Nuovi spazi dopo una misura, altrimenti quelli vecchi spostati con il testo.
+                    apply: (tr, set) => tr.getMeta(pagesKey) ?? set.map(tr.mapping, tr.doc),
+                },
+                props: {
+                    decorations: (state) => pagesKey.getState(state),
+                },
+                view: (view) => {
+                    let frame = 0;
+                    const schedule = () => {
+                        cancelAnimationFrame(frame);
+                        frame = requestAnimationFrame(() => measurePages(view)); // a disegno finito
+                    };
+
+                    schedule();
+                    document.fonts?.ready.then(schedule); // i font possono arrivare dopo il primo disegno
+                    window.addEventListener('resize', schedule);
+
+                    return {
+                        update: schedule,
+                        destroy: () => {
+                            cancelAnimationFrame(frame);
+                            window.removeEventListener('resize', schedule);
+                        },
+                    };
+                },
+            })];
+        },
+    });
+
     const fields = {
         title: form.elements.title,
         artist: form.elements.artist,
@@ -240,6 +384,8 @@ if (element) {
             PastedHighlight.configure({ multicolor: true }),                        // evidenziatore a più colori
             TextAlign.configure({ types: ['paragraph'], alignments: ['left', 'center', 'right'] }),
             AutoLine,
+            PageBreak,
+            Pagination,
         ],
         content: JSON.parse(input.value),
         // Niente scorciatoie "markdown" (es. *testo* → corsivo): in una tabulatura * e _ sono testo.
@@ -330,7 +476,7 @@ if (element) {
             if (command === 'align') {
                 chain.setTextAlign(value).run();
             } else {
-                chain[command]().run(); // toggleBold, toggleItalic, toggleUnderline
+                chain[command]().run(); // toggleBold, toggleItalic, toggleUnderline, setPageBreak
             }
         });
     });
@@ -346,7 +492,7 @@ if (element) {
         document.getElementById('tab-color-bar').style.backgroundColor = style.color || '#000000';
         document.getElementById('tab-highlight-bar').style.backgroundColor = editor.getAttributes('highlight').color || 'transparent';
 
-        toolbar.querySelectorAll('[data-command]').forEach((button) => {
+        toolbar.querySelectorAll('[data-command][aria-pressed]').forEach((button) => {
             const { command, value } = button.dataset;
             const active = command === 'align'
                 ? (editor.getAttributes('paragraph').textAlign || 'left') === value

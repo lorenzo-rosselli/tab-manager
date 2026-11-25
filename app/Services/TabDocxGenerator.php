@@ -45,6 +45,9 @@ class TabDocxGenerator
                 'spaceBefore' => 0,
                 'spaceAfter' => 0,
                 'lineHeight' => 1.0,
+                // Interruzione di pagina: il paragrafo inizia su una pagina nuova ("Anteponi interruzione di pagina").
+                // Meglio di addPageBreak(), che lascerebbe una riga vuota in cima alla pagina nuova.
+                'pageBreakBefore' => $paragraph['pageBreakBefore'],
                 // LEFT/RIGHT sono i valori "classici" del formato .docx, letti da tutte le versioni di Word
                 // (PHPWord li segna come deprecati a favore di START/END, meno compatibili).
                 'alignment' => match ($paragraph['align']) {

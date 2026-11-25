@@ -7,7 +7,7 @@
 
 ## 1. Descrizione del programma
 
-**Tab Manager** è una piccola applicazione web, personale e locale, per **scrivere, archiviare ed esportare in Word (.docx) tabulature per basso e chitarra**.
+**Tab Manager** è una piccola applicazione web, personale e locale, per **scrivere, archiviare ed esportare in Word (.docx) tabulature per basso e chitarra** e parti per voce.
 
 L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scrive o le incolla su un **foglio** che è già il documento Word finale (stessa pagina, stessa formattazione), e l'app lo archivia e lo esporta in .docx, pronto da stampare o da modificare.
 
@@ -75,7 +75,7 @@ React, Vue, Livewire, Inertia, Alpine.js, starter kit con autenticazione, MySQL/
 | `artist` | `string(255)` | sì | Artista del brano (es. Queen) |
 | `title` | `string(255)` | sì | Titolo del brano (es. Another One Bites the Dust) |
 | `band` | `string(255)`, nullable | no | Il gruppo con cui si suona il brano |
-| `instrument` | `string(10)`: valori `bass` / `guitar` | sì | Strumento |
+| `instrument` | `string(10)`: valori `bass` / `guitar` / `voice` | sì | Strumento |
 | `show_instrument` | `boolean`, default `false` | sì | Scrivere lo strumento nella seconda riga del foglio |
 | `show_band` | `boolean`, default `false` | sì | Scrivere il gruppo nella seconda riga del foglio |
 | `tab` | `longText` | sì | Il **foglio**: documento formattato in formato JSON di Tiptap (vedi sotto) |
@@ -121,8 +121,9 @@ Sa trattare il foglio lato server:
 - `toHtml($doc)`: HTML del foglio per l'anteprima, con l'escaping di tutto il testo (`e()`) e solo valori ammessi negli stili: sicuro da stampare con `{!! !!}`.
 
 ### Enum `App\Enums\Instrument`
-- Casi `Bass = 'bass'` e `Guitar = 'guitar'`.
-- Metodo `label()` che restituisce "Basso" / "Chitarra".
+- Casi `Bass = 'bass'`, `Guitar = 'guitar'` e `Voice = 'voice'`.
+- Metodo `label()` che restituisce "Basso" / "Chitarra" / "Voce".
+- È l'unico punto in cui sono elencati gli strumenti: select del form, validazione e ricerca li leggono da qui.
 
 ### Altro
 - Le tabelle predefinite di Laravel (`users`, `sessions`, `cache`, `jobs`…) restano: servono al framework.
@@ -153,7 +154,7 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 ### Controller `App\Http\Controllers\SongController`
 - `store` e `update` salvano `$request->songData()` (vedi sezione 6) e fanno un redirect all'anteprima con un **messaggio flash** (`->with('status', ...)`): "Brano salvato.", "Modifiche salvate."; `destroy` torna all'elenco con "Brano eliminato.".
 - `index(Request $request)`:
-  - **ricerca** `?q=testo`: mostra i brani che contengono il testo nell'artista, nel titolo, nel gruppo o nel nome dello strumento (`where`/`orWhere` con `like`, raggruppati in un `where(function ...)`). Lo strumento è salvato come `bass`/`guitar`: si cercano i casi di `Instrument` la cui etichetta ("Basso", "Chitarra") contiene il testo e si aggiunge `orWhereIn('instrument', ...)`, così "basso" o "chit" trovano i brani giusti;
+  - **ricerca** `?q=testo`: mostra i brani che contengono il testo nell'artista, nel titolo, nel gruppo o nel nome dello strumento (`where`/`orWhere` con `like`, raggruppati in un `where(function ...)`). Lo strumento è salvato come `bass`/`guitar`/`voice`: si cercano i casi di `Instrument` la cui etichetta ("Basso", "Chitarra", "Voce") contiene il testo e si aggiunge `orWhereIn('instrument', ...)`, così "basso" o "chit" trovano i brani giusti;
   - **ordinamento multiplo** `?sort=artist,-title`: lista di colonne separate da virgole, nell'ordine di priorità; il `-` davanti indica l'ordine decrescente. Chiavi ammesse (costante `SORTABLE`, che fa da lista bianca e dà l'ordine delle colonne): `artist`, `title`, `band`, `instrument`, `date` (→ `created_at`). Senza `sort` l'elenco va dal più recente. In SQLite i gruppi vuoti (NULL) vengono prima in ordine crescente;
   - metodi privati: `parseSorts()` (testo → array colonna => direzione), `sortParam()` (l'inverso), `sortColumns()` (per ogni intestazione: etichetta, stato attuale, posizione e link del clic successivo).
 - `download(Song $song, TabDocxGenerator $generator)`: vedi sezione 7.
@@ -190,7 +191,7 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 ### Form (`songs/_form.blade.php`)
 - `artist`, `title`: input di testo (in quest'ordine).
 - `band`: input di testo "Gruppo (facoltativo)", con accanto la spunta **"Mostra nel foglio"** (`show_band`).
-- `instrument`: select (Basso / Chitarra), costruita da `Instrument::cases()`, con accanto la spunta **"Mostra nel foglio"** (`show_instrument`).
+- `instrument`: select (Basso / Chitarra / Voce), costruita da `Instrument::cases()`, con accanto la spunta **"Mostra nel foglio"** (`show_instrument`).
 - Le spunte sono caselle precedute da un campo nascosto con valore `0` (inviato quando la casella è vuota).
 - **Il foglio** (`tab`) è esattamente il documento Word che verrà scaricato. È composto da:
   - una **barra di formattazione** in alto (`role="toolbar"`, grigio chiaro o quasi nera secondo il tema), simile a quella di Word: menu **font** (`Song::FONTS`), menu **dimensione** (`Song::FONT_SIZES`), pulsanti **G** / *C* / <u>S</u> (grassetto, corsivo, sottolineato, come nel Word italiano), **colore carattere** ("A" con una barretta del colore attuale) ed **evidenziatore** (icona con una barretta del colore attuale), e tre pulsanti di **allineamento**. Colore ed evidenziatore aprono un menu a tendina (`<details>`) con la tavolozza (`Song::TEXT_COLORS` più "Automatico" = nero; `Song::HIGHLIGHTS` più "Nessuno"). Il menu si chiude scegliendo un colore, cliccando in qualsiasi altro punto della pagina (aprendo l'altra tavolozza la prima si chiude, quindi ne è aperta al massimo una) o con Esc. Font, dimensione, G/C/S, colore ed evidenziatore si applicano al **testo selezionato**; l'allineamento ai **paragrafi** selezionati. La barra mostra la formattazione del punto in cui si trova il cursore (pulsanti attivi con `aria-pressed`, stile Tailwind `aria-pressed:`);
@@ -221,7 +222,7 @@ Con una Form Request `App\Http\Requests\SongRequest` (`authorize()` restituisce 
 'artist'          => ['required', 'string', 'max:255'],
 'title'           => ['required', 'string', 'max:255'],
 'band'            => ['nullable', 'string', 'max:255'],
-'instrument'      => ['required', 'in:bass,guitar'],
+'instrument'      => ['required', Rule::in(array_column(Instrument::cases(), 'value'))], // bass, guitar, voice
 'show_instrument' => ['required', 'boolean'],
 'show_band'       => ['required', 'boolean'],
 'tab'             => ['required', 'json', /* closure: il foglio deve contenere testo (TabDocument::hasText) */],

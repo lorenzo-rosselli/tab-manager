@@ -12,14 +12,15 @@
 }
 
 /*
-| Foglio della tabulatura (editor nel form e anteprima): come una pagina Word.
+| Foglio della tabulatura (editor nel form e anteprima): come un documento Word.
 | Il testo senza formattazione propria usa Lucida Console 10 pt; i paragrafi non hanno spazi
-| tra loro (interlinea singola) e un paragrafo vuoto resta una riga vuota.
+| tra loro e un paragrafo vuoto resta una riga vuota. Interlinea "normal": quella del font,
+| come l'interlinea singola del Word.
 */
 .tab-sheet {
     font-family: 'Lucida Console', monospace;
     font-size: 10pt;
-    line-height: 1.15;
+    line-height: normal;
     color: #111827;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -30,6 +31,95 @@
 }
 
 .tab-sheet .ProseMirror {
-    min-height: 25.7cm;
+    min-height: 25.7cm; /* poi la calcola resources/js/tab-pages.js: fino in fondo all'ultima pagina */
     outline: none;
+}
+
+/*
+| Pagine A4 (resources/js/tab-pages.js): il testo sta in .tab-sheet, con 2 cm di margine;
+| dietro, in .tab-paper-pages, le pagine bianche (21 × 29,7 cm, 1 cm di distanza tra l'una e l'altra)
+| con il bordo tratteggiato della zona scrivibile. Finché lo script non ha disegnato le pagine,
+| il foglio è semplicemente bianco.
+*/
+.tab-paper {
+    position: relative;
+    width: 21cm;
+    min-height: 29.7cm;
+    margin-inline: auto;
+    background: white;
+}
+
+.tab-paper.is-paged {
+    background: transparent;
+}
+
+.tab-paper-pages {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.tab-page {
+    position: absolute;
+    left: 0;
+    width: 21cm;
+    height: 29.7cm;
+    background: white;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+}
+
+.dark .tab-page {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+}
+
+/* Zona scrivibile, solo nell'editor (nell'anteprima la pagina è pulita, come stampata) */
+.tab-paper:has(.ProseMirror) .tab-page::after {
+    content: '';
+    position: absolute;
+    inset: calc(2cm - 4px);
+    outline: 1px dashed #d1d5db;
+}
+
+.tab-paper:focus-within .tab-page::after {
+    outline-color: #6b7280;
+}
+
+.tab-paper > .tab-sheet {
+    position: relative;
+    padding: 2cm;
+}
+
+/* Spazio che porta il testo alla pagina successiva (altezza calcolata dallo script) */
+.tab-page-spacer {
+    pointer-events: none;
+}
+
+/* Interruzione di pagina: invisibile nell'anteprima, riga tratteggiata con scritta nell'editor */
+.tab-page-break {
+    height: 0;
+}
+
+.ProseMirror .tab-page-break {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    height: auto;
+    padding-block: 0.25em;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 8pt;
+    line-height: 1.2;
+    color: #9ca3af;
+    cursor: default;
+    user-select: none;
+}
+
+.ProseMirror .tab-page-break::before,
+.ProseMirror .tab-page-break::after {
+    content: '';
+    flex: 1;
+    border-top: 1px dashed currentColor;
+}
+
+.ProseMirror .tab-page-break.ProseMirror-selectednode {
+    color: #2563eb;
 }

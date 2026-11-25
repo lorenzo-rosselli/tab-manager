@@ -76,8 +76,10 @@
         Il foglio: è esattamente il documento Word che verrà scaricato.
         - In alto la barra di formattazione (come in Word): agisce sul testo selezionato
           (font, dimensione, G/C/S) o sui paragrafi selezionati (allineamento).
-        - Sotto, la pagina A4 larga 21 cm con margini di 2 cm; la zona scrivibile (17 cm, come nel .docx)
-          è segnata da un bordo tratteggiato e il testo va a capo al margine.
+        - Sotto, le pagine A4 (21 × 29,7 cm) con margini di 2 cm, disegnate da resources/js/tab-pages.js;
+          la zona scrivibile (17 × 25,7 cm, come nel .docx) è segnata da un bordo tratteggiato,
+          il testo va a capo al margine e passa alla pagina successiva quando la pagina è piena.
+        - L'ultimo pulsante della barra (o Ctrl+Invio) inserisce un'interruzione di pagina.
         L'editor (Tiptap) è in resources/js/tab-editor.js e scrive il documento nel campo nascosto "tab".
         data-home: l'indirizzo dell'elenco, dove porta il tasto Esc.
     --}}
@@ -155,12 +157,19 @@
                         @include('icons.align-'.$value)
                     </button>
                 @endforeach
+
+                <span class="mx-2 h-6 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+
+                <button type="button" title="Interruzione di pagina (Ctrl+Invio)" aria-label="Interruzione di pagina"
+                        data-command="setPageBreak" class="{{ $button }}">
+                    @include('icons.page-break')
+                </button>
             </div>
 
             <div class="overflow-x-auto rounded-b-md bg-gray-200 p-6 dark:bg-gray-800 sm:p-10">
-                <div class="mx-auto w-[21cm] bg-white p-[2cm] shadow-lg shadow-black/20 dark:shadow-black/50">
-                    <div id="tab-editor" data-home="{{ route('songs.index') }}"
-                         class="tab-sheet outline-1 outline-offset-4 outline-gray-300 outline-dashed focus-within:outline-gray-500"></div>
+                <div class="tab-paper">
+                    <div class="tab-paper-pages" aria-hidden="true"></div>
+                    <div id="tab-editor" data-home="{{ route('songs.index') }}" class="tab-sheet"></div>
                 </div>
             </div>
         </div>
