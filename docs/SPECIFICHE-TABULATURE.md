@@ -123,10 +123,13 @@ React, Vue, Livewire, Inertia, Alpine.js, starter kit con autenticazione, MySQL/
 | `title` | `string(255)` | sì | Titolo del brano (es. Another One Bites the Dust) |
 | `band` | `string(255)`, nullable | no | Il gruppo con cui si suona il brano |
 | `instrument` | `string(10)`: valori `bass` / `guitar` / `voice` | sì | Strumento |
+| `strings` | `unsignedTinyInteger`, nullable | no | Numero di corde: 4 o 5 per il basso, 6 per la chitarra; vuoto per la voce |
 | `show_instrument` | `boolean`, default `false` | sì | Scrivere lo strumento nella seconda riga del foglio |
 | `show_band` | `boolean`, default `false` | sì | Scrivere il gruppo nella seconda riga del foglio |
 | `tab` | `longText` | sì | Il **foglio**: documento formattato in formato JSON di Tiptap (vedi sotto) |
 | `created_at` / `updated_at` | `timestamps()` | auto | — |
+
+La tabella è creata da `2026_11_24_182440_create_songs_table.php`; la colonna `strings` la aggiunge una seconda migration, `2026_11_25_150000_add_strings_to_songs_table.php`. Le nuove colonne si aggiungono sempre così, con una migration nuova: `php artisan migrate` (lanciato anche da `Installa Tab Manager.cmd`) aggiorna i database che hanno già dei brani senza cancellarli.
 
 ### Il foglio (`tab`)
 Un documento JSON di Tiptap: una lista di paragrafi, ognuno con il suo allineamento e i suoi pezzi di testo, ognuno con la sua formattazione.
@@ -146,7 +149,7 @@ Un documento JSON di Tiptap: una lista di paragrafi, ognuno con il suo allineame
 - Righe automatiche: i paragrafi con l'attributo `auto` (`header` = "Artista - Titolo", `info` = "Strumento: … - Gruppo") sono le righe scritte dall'app in cima al foglio; `autoText` ricorda il testo scritto in automatico (vedi sezione 5, "Form").
 
 ### Modello `App\Models\Song`
-- Campi compilabili dichiarati con l'attributo `#[Fillable([...])]` sopra la classe (stile Laravel 13): `artist`, `title`, `band`, `instrument`, `show_instrument`, `show_band`, `tab`.
+- Campi compilabili dichiarati con l'attributo `#[Fillable([...])]` sopra la classe (stile Laravel 13): `artist`, `title`, `band`, `instrument`, `strings`, `show_instrument`, `show_band`, `tab`.
 - Costanti, usate dal form, dalla lettura del foglio e dal Word:
   - `Song::FONTS`: `Lucida Console`, `Courier New`, `Consolas` (solo font **monospaziati**, così le colonne della tabulatura restano allineate);
   - `Song::FONT_SIZES`: 8, 9, 10, 11, 12, 14, 16, 18;
@@ -155,7 +158,7 @@ Un documento JSON di Tiptap: una lista di paragrafi, ognuno con il suo allineame
   - `Song::HIGHLIGHTS`: i colori dell'evidenziatore (giallo, verde, turchese, rosa, rosso, grigio chiaro), valore esadecimale => [nome, nome dell'evidenziatore in Word: `yellow`, `green`, `cyan`, `magenta`, `red`, `lightGray`]. Word ammette solo una tavolozza fissa di evidenziatori, quindi si usano quelli;
   - `Song::DEFAULT_FONT` = `Lucida Console`, `Song::DEFAULT_FONT_SIZE` = 10.
 - Proprietà `$attributes`: `show_instrument` e `show_band` a `false` per un brano nuovo.
-- Cast (metodo `casts()`): `instrument` → Enum `Instrument`, `show_instrument`/`show_band` → boolean, `tab` → array (il JSON diventa un array PHP e viceversa).
+- Cast (metodo `casts()`): `instrument` → Enum `Instrument`, `strings` → integer, `show_instrument`/`show_band` → boolean, `tab` → array (il JSON diventa un array PHP e viceversa).
 
 ### Classe `App\Services\TabDocument`
 Sa trattare il foglio lato server:
@@ -170,7 +173,8 @@ Sa trattare il foglio lato server:
 ### Enum `App\Enums\Instrument`
 - Casi `Bass = 'bass'`, `Guitar = 'guitar'` e `Voice = 'voice'`.
 - Metodo `label()` che restituisce "Basso" / "Chitarra" / "Voce".
-- È l'unico punto in cui sono elencati gli strumenti: select del form, validazione e ricerca li leggono da qui.
+- Metodo `tunings()`: i numeri di corde che si possono scegliere, ognuno con l'accordatura standard dalla corda più acuta alla più grave (l'ordine delle righe di una tabulatura): basso `4 => G D A E` e `5 => G D A E B`; chitarra `6 => e B G D A E` (la "e" minuscola è il Mi acuto, come si usa nelle tablature); voce nessuno. Metodo `strings()`: solo i numeri (`[4, 5]`, `[6]`, `[]`). Metodo `defaultStrings()`: il numero proposto, cioè il primo di `tunings()` (basso 4, chitarra 6, voce null).
+- È l'unico punto in cui sono elencati gli strumenti e le loro corde: select del form, validazione e ricerca li leggono da qui.
 
 ### Altro
 - Le tabelle predefinite di Laravel (`users`, `sessions`, `cache`, `jobs`…) restano: servono al framework.
@@ -232,19 +236,22 @@ Route::get('songs/{song}/docx', [SongController::class, 'download'])->name('song
 - `songs/_delete.blade.php`: icona cestino + **finestra modale di conferma** fatta con l'**API Popover** di HTML (`popover` + `popovertarget`), senza JavaScript. Il testo è "Artista - Titolo verrà eliminato definitivamente."; si chiude con l'icona Annulla, con Esc o cliccando fuori; il form DELETE parte solo dal pulsante di conferma. Il pannello è centrato con `m-auto h-fit` (il reset CSS di Tailwind azzera il `margin: auto` dei popover). Richiede un browser recente (Chrome/Edge 114+, Firefox 125+, Safari 17+). Usata nell'elenco e nell'anteprima.
 - `songs/create.blade.php` e `songs/edit.blade.php`: contengono il `<form>` (POST, oppure PUT con `@method('PUT')`) e includono il partial `songs/_form.blade.php`.
 - `songs/show.blade.php`: titolo, artista, riga "Strumento: … – Gruppo: …" (il gruppo solo se presente), icone Scarica .docx / Modifica / Elimina, e il **foglio** sulle stesse pagine A4 del form (elemento con `data-paginate`, impaginato da `tab-pages.js`; nell'anteprima le pagine sono pulite, senza bordo tratteggiato né scritta dell'interruzione), con l'HTML di `TabDocument::toHtml()`. In fondo l'icona "Torna all'elenco". **Tasto Esc**: torna all'elenco. L'indirizzo è nell'attributo `data-escape-to` e il tasto è gestito da `resources/js/app.js`; se è aperta la modale di eliminazione, Esc chiude solo quella.
-- `icons/*.blade.php`: icone SVG scritte direttamente nell'HTML, incluse con `@include('icons.nome')`, senza pacchetti: `logo` (il logo dell'app), `plus`, `pencil`, `download`, `trash`, `save`, `x-mark`, `arrow-left`, `magnifying-glass`, `chevron-up`, `chevron-down`, `align-left`, `align-center`, `align-right`, `page-break`, `highlighter`, `sun`, `moon`. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` e l'evidenziatore `highlighter` vengono da Lucide (licenza ISC), con lo spessore portato a 1.5; le icone di allineamento e `page-break` (fondo di una pagina, linea tratteggiata, inizio della successiva) sono disegnate sul modello delle Heroicons.
+- `icons/*.blade.php`: icone SVG scritte direttamente nell'HTML, incluse con `@include('icons.nome')`, senza pacchetti: `logo` (il logo dell'app), `plus`, `pencil`, `download`, `trash`, `save`, `x-mark`, `arrow-left`, `magnifying-glass`, `chevron-up`, `chevron-down`, `align-left`, `align-center`, `align-right`, `page-break`, `tab-staff`, `highlighter`, `sun`, `moon`. Fonti: Heroicons v2 outline (licenza MIT); il floppy `save` e l'evidenziatore `highlighter` vengono da Lucide (licenza ISC), con lo spessore portato a 1.5; le icone di allineamento, `page-break` (fondo di una pagina, linea tratteggiata, inizio della successiva) e `tab-staff` (le righe di una tabulatura con un "+") sono disegnate sul modello delle Heroicons.
 - **Icona e logo dell'app**, disegnati per Tab Manager: quadrato arancione (`#F59E0B`) con gli angoli arrotondati, quattro corde scure (`#1F2937`) e i numeri 3, 5, 7 sulle corde come in una tablatura. Le cifre sono tracciati (non testo), così l'icona è identica su ogni computer. Stessa immagine in `resources/views/icons/logo.blade.php` (intestazione, 32 px), `public/favicon.svg`, `public/favicon.ico` e `windows/tab-manager.ico` (16–256 px).
 - `resources/css/app.css`: oltre a Tailwind, la classe `.tab-sheet` del foglio (editor e anteprima): Lucida Console 10 pt, interlinea `normal` (quella del font, come l'interlinea singola del Word), testo scuro, `white-space: pre-wrap` (gli spazi restano), paragrafi senza margini. Inoltre le classi delle pagine: `.tab-paper` (il foglio, largo 21 cm; bianco finché lo script non disegna le pagine), `.tab-paper-pages` e `.tab-page` (le pagine bianche con l'ombra e, solo nell'editor, il bordo tratteggiato della zona scrivibile, più scuro quando si sta scrivendo), `.tab-page-spacer` (spazio fino alla pagina successiva) e `.tab-page-break` (interruzione di pagina: alta 0 nell'anteprima; nell'editor una riga tratteggiata grigia con la scritta "Interruzione di pagina", blu quando è selezionata).
 
 ### Form (`songs/_form.blade.php`)
-- `artist`, `title`: input di testo (in quest'ordine).
-- `band`: input di testo "Gruppo (facoltativo)", con accanto la spunta **"Mostra nel foglio"** (`show_band`).
+- I campi sono su due colonne, in quest'ordine: **Artista**, **Titolo** / **Strumento**, **Corde** / **Gruppo** (da solo nella colonna di sinistra).
+- `artist`, `title`: input di testo.
 - `instrument`: select (Basso / Chitarra / Voce), costruita da `Instrument::cases()`, con accanto la spunta **"Mostra nel foglio"** (`show_instrument`).
+- `strings`: select **"Corde"**, accanto allo strumento, con le voci "—" e "4 corde", "5 corde", "6 corde" (da `Instrument::tunings()`; ogni voce ha `data-instrument` e `data-tuning` con le corde, es. `"G D A E"`), senza i nomi degli strumenti. Lo script dell'editor mostra solo le voci dello strumento scelto: basso "4 corde" e "5 corde", chitarra "6 corde"; con la voce resta solo "—" e il menu è disattivato. Il valore proposto è `defaultStrings()` (basso 4, chitarra 6): per un brano nuovo, per un brano senza numero di corde e quando si cambia strumento. Serve solo per il pulsante "Inserisci tabulatura vuota": non compare nel foglio, nell'elenco, nell'anteprima né nel Word.
+- `band`: input di testo "Gruppo (facoltativo)", con accanto la spunta **"Mostra nel foglio"** (`show_band`).
 - Le spunte sono caselle precedute da un campo nascosto con valore `0` (inviato quando la casella è vuota).
 - **Il foglio** (`tab`) è esattamente il documento Word che verrà scaricato. È composto da:
-  - una **barra di formattazione** in alto (`role="toolbar"`, grigio chiaro o quasi nera secondo il tema), simile a quella di Word: menu **font** (`Song::FONTS`), menu **dimensione** (`Song::FONT_SIZES`), pulsanti **G** / *C* / <u>S</u> (grassetto, corsivo, sottolineato, come nel Word italiano), **colore carattere** ("A" con una barretta del colore attuale) ed **evidenziatore** (icona con una barretta del colore attuale), tre pulsanti di **allineamento** e il pulsante **Interruzione di pagina** (anche con Ctrl+Invio, come in Word). Colore ed evidenziatore aprono un menu a tendina (`<details>`) con la tavolozza (`Song::TEXT_COLORS` più "Automatico" = nero; `Song::HIGHLIGHTS` più "Nessuno"). Il menu si chiude scegliendo un colore, cliccando in qualsiasi altro punto della pagina (aprendo l'altra tavolozza la prima si chiude, quindi ne è aperta al massimo una) o con Esc. Font, dimensione, G/C/S, colore ed evidenziatore si applicano al **testo selezionato**; l'allineamento ai **paragrafi** selezionati. La barra mostra la formattazione del punto in cui si trova il cursore (pulsanti attivi con `aria-pressed`, stile Tailwind `aria-pressed:`);
+  - una **barra di formattazione** in alto (`role="toolbar"`, grigio chiaro o quasi nera secondo il tema), simile a quella di Word: menu **font** (`Song::FONTS`), menu **dimensione** (`Song::FONT_SIZES`), pulsanti **G** / *C* / <u>S</u> (grassetto, corsivo, sottolineato, come nel Word italiano), **colore carattere** ("A" con una barretta del colore attuale) ed **evidenziatore** (icona con una barretta del colore attuale), tre pulsanti di **allineamento**, il pulsante **Interruzione di pagina** (anche con Ctrl+Invio, come in Word) e il pulsante **Inserisci tabulatura vuota** (icona `tab-staff`), attivo solo quando è scelto il numero di corde (il tooltip dice quante, oppure di sceglierle prima). Colore ed evidenziatore aprono un menu a tendina (`<details>`) con la tavolozza (`Song::TEXT_COLORS` più "Automatico" = nero; `Song::HIGHLIGHTS` più "Nessuno"). Il menu si chiude scegliendo un colore, cliccando in qualsiasi altro punto della pagina (aprendo l'altra tavolozza la prima si chiude, quindi ne è aperta al massimo una) o con Esc. Font, dimensione, G/C/S, colore ed evidenziatore si applicano al **testo selezionato**; l'allineamento ai **paragrafi** selezionati. La barra mostra la formattazione del punto in cui si trova il cursore (pulsanti attivi con `aria-pressed`, stile Tailwind `aria-pressed:`);
   - le **pagine**: A4 bianche (21 × 29,7 cm), centrate nello schermo, una sotto l'altra a 1 cm di distanza, con margini di 2 cm. La zona scrivibile (17 × 25,7 cm, la stessa del .docx) è segnata da un bordo tratteggiato, senza righello; il testo va a capo al margine come in Word e, quando la pagina è piena, il paragrafo successivo passa alla pagina dopo (un paragrafo non viene mai spezzato tra due pagine: una riga di tabulatura resta intera);
   - **come si impagina** (`resources/js/tab-pages.js`, condiviso con l'anteprima): dopo ogni modifica si misura l'altezza di ogni blocco del foglio e `paginate()` calcola davanti a quali paragrafi serve uno spazio che li porti all'inizio della pagina successiva; dopo un'interruzione di pagina si va sempre a pagina nuova; un paragrafo più alto di una pagina resta dov'è. Nell'editor gli spazi sono **decorazioni** di Tiptap (si vedono ma non fanno parte del documento: non finiscono né nel JSON né nel Word); dietro al testo `drawPages()` disegna le pagine bianche. Il calcolo si ripete anche quando arrivano i font e quando cambia la finestra. I salti pagina sono molto vicini a quelli del Word, ma non garantiti al millimetro (browser e Word misurano le righe in modo leggermente diverso);
+  - la **tabulatura vuota**: il pulsante aggiunge in fondo al foglio un paragrafo per corda, dalla più acuta alla più grave, nella forma `G|` seguito da 34 trattini (basso a 4 corde: righe G, D, A, E; a 5 corde: G, D, A, E, B; chitarra: e, B, G, D, A, E), senza formattazione propria (Lucida Console 10 pt, a sinistra). Tra il testo sopra e la tabulatura resta una riga vuota (se il foglio finisce già con una riga vuota si usa quella); su un foglio vuoto o subito dopo un'interruzione di pagina parte dalla prima riga. Il cursore va in fondo all'ultima riga inserita. Si può premere più volte;
   - l'**interruzione di pagina**: il testo dopo il cursore va sulla pagina nuova, insieme al cursore; a fine riga si crea un paragrafo vuoto sulla pagina nuova; il nuovo paragrafo tiene l'allineamento ma non è mai una riga automatica. Si seleziona e si cancella come un carattere;
   - l'**editor Tiptap** (`resources/js/tab-editor.js`), configurato con paragrafi, interruzioni di pagina, a capo, grassetto, corsivo, sottolineato, font, dimensione, colore, evidenziatore a più colori, allineamento e annulla/ripeti; le scorciatoie "markdown" sono disattivate (in una tabulatura `*` e `_` sono testo). Il testo incollato senza formattazione diventa un paragrafo per riga, **comprese le righe vuote**. Il testo incollato con formattazione (dal foglio stesso, da un altro brano, da Word o da una pagina web) la conserva:
     - colore del testo: riconosciuto in qualsiasi forma (`#C00000`, `rgb(...)`, nomi come `red`) e salvato come `#RRGGBB`. Quasi nero diventa "Automatico"; quasi bianco viene ignorato, perché sul foglio bianco sarebbe invisibile (per esempio copiando da una pagina con il tema scuro);
@@ -273,14 +280,16 @@ Con una Form Request `App\Http\Requests\SongRequest` (`authorize()` restituisce 
 'title'           => ['required', 'string', 'max:255'],
 'band'            => ['nullable', 'string', 'max:255'],
 'instrument'      => ['required', Rule::in(array_column(Instrument::cases(), 'value'))], // bass, guitar, voice
+'strings'         => ['nullable', Rule::in(Instrument::tryFrom($this->input('instrument'))?->strings() ?? [])],
 'show_instrument' => ['required', 'boolean'],
 'show_band'       => ['required', 'boolean'],
 'tab'             => ['required', 'json', /* closure: il foglio deve contenere testo (TabDocument::hasText) */],
 ```
 
 - La regola del foglio è una **closure**: decodifica il JSON e, se non contiene almeno un carattere, fallisce con il messaggio di `required` ("Il campo tabulatura è obbligatorio.").
-- Il metodo `songData()` restituisce i dati validati con `tab` già decodificato in array, pronto per il modello.
-- I messaggi di errore sono in italiano grazie a `APP_LOCALE=it` e al file di traduzione **`lang/it/validation.php`**, scritto a mano: contiene solo le regole usate (`required`, `string`, `in`, `boolean`, `json`, `max.string`) e, in `attributes`, i nomi italiani dei campi (artista, titolo, gruppo, strumento, mostra strumento, mostra gruppo, tabulatura). Per le regole non tradotte Laravel usa l'inglese (`APP_FALLBACK_LOCALE=en`).
+- `strings` ammette solo i numeri di corde dello strumento scelto (basso 4 o 5, chitarra 6); con la voce, o con uno strumento non valido, nessun numero.
+- Il metodo `songData()` restituisce i dati validati con `tab` già decodificato in array, pronto per il modello, e `strings`, se non è arrivato, uguale a `defaultStrings()` dello strumento (con la voce il menu è disattivato e il browser non lo invia: diventa null, e in modifica non resta il numero vecchio).
+- I messaggi di errore sono in italiano grazie a `APP_LOCALE=it` e al file di traduzione **`lang/it/validation.php`**, scritto a mano: contiene solo le regole usate (`required`, `string`, `in`, `boolean`, `json`, `max.string`) e, in `attributes`, i nomi italiani dei campi (artista, titolo, gruppo, strumento, numero di corde, mostra strumento, mostra gruppo, tabulatura). Per le regole non tradotte Laravel usa l'inglese (`APP_FALLBACK_LOCALE=en`).
 
 ---
 
@@ -323,9 +332,9 @@ E|--5--------------|--5--------------|
 ```
 
 Il **Seeder** `SongSeeder` inserisce tre brani con tabulature **inventate** (non di brani reali protetti), artista "Esercizi Tab Manager". Ogni foglio è costruito con `TabDocument::make()`: righe automatiche, una riga vuota, poi la tabulatura.
-- "Groove di prova in La": basso, gruppo "I Prova Generale"; seconda riga "Strumento: Basso - I Prova Generale";
-- "Linea a cinque corde": basso, senza gruppo; seconda riga "Strumento: Basso"; la tabulatura inizia con "Accordatura: B E A D G";
-- "Arpeggio di studio": chitarra, gruppo "Trio Acustico"; seconda riga "Trio Acustico" (strumento non spuntato).
+- "Groove di prova in La": basso a 4 corde, gruppo "I Prova Generale"; seconda riga "Strumento: Basso - I Prova Generale";
+- "Linea a cinque corde": basso a 5 corde, senza gruppo; seconda riga "Strumento: Basso"; la tabulatura inizia con "Accordatura: B E A D G";
+- "Arpeggio di studio": chitarra a 6 corde, gruppo "Trio Acustico"; seconda riga "Trio Acustico" (strumento non spuntato).
 
 Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh --seed`.
 
@@ -343,7 +352,7 @@ Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh
 3. **Rotte e controller** ✅: `SongController` resource, Form Request `SongRequest`.
 4. **Viste** ✅: layout, elenco, form (create/edit) con il foglio, anteprima, icone.
 5. **Export Word** ✅: servizio `TabDocxGenerator` e azione `download`.
-6. **Rifiniture** 🔄: messaggi flash, modale di conferma eliminazione, ricerca e ordinamento multiplo nell'elenco, riga cliccabile, traduzioni in italiano, tema chiaro/scuro con interruttore, foglio con editor di testo ricco su pagine A4, barra di formattazione (con colore, evidenziatore e interruzione di pagina) e righe automatiche.
+6. **Rifiniture** 🔄: messaggi flash, modale di conferma eliminazione, ricerca e ordinamento multiplo nell'elenco, riga cliccabile, traduzioni in italiano, tema chiaro/scuro con interruttore, foglio con editor di testo ricco su pagine A4, barra di formattazione (con colore, evidenziatore, interruzione di pagina e tabulatura vuota), righe automatiche e numero di corde.
 7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).
 
 ### Possibili sviluppi futuri (non ora)

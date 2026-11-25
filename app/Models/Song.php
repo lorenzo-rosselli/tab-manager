@@ -6,7 +6,7 @@ use App\Enums\Instrument;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['title', 'artist', 'band', 'instrument', 'show_instrument', 'show_band', 'tab'])]
+#[Fillable(['title', 'artist', 'band', 'instrument', 'strings', 'show_instrument', 'show_band', 'tab'])]
 class Song extends Model
 {
     /**
@@ -81,6 +81,7 @@ class Song extends Model
     {
         return [
             'instrument' => Instrument::class,
+            'strings' => 'integer',
             'show_instrument' => 'boolean',
             'show_band' => 'boolean',
             'tab' => 'array', // il JSON del foglio diventa un array PHP (e viceversa)

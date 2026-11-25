@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -619,6 +619,46 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 - [x] Script, README e specifiche
 - [ ] Prova su Windows: annullare con N; disinstallare tenendo l'archivio e reinstallare (i brani ci sono ancora); disinstallare cancellando l'archivio
 - [ ] Commit
+
+### Parte 13 – Numero di corde e tabulatura vuota (25/11/2026) 🔄
+
+**Richieste**
+33. Nel form (nuovo brano e modifica), con lo strumento, il **numero di corde**, facoltativo: basso 4 o 5, chitarra 6, voce niente.
+34. Con il numero di corde scelto, un pulsante nella barra dell'editor (accanto all'interruzione di pagina) **aggiunge in fondo al foglio una tabulatura vuota** adatta allo strumento, per esempio per il basso a 4 corde quattro righe `G|----------------------------------`, `D|…`, `A|…`, `E|…`.
+
+**Decisioni**
+- Nuova colonna `strings` (nullable) con una **migration nuova** (`2026_11_25_150000_add_strings_to_songs_table.php`), non riscrivendo quella originale come nelle parti precedenti: ora ci sono database con brani veri (il tuo e quello del tester), e `php artisan migrate` aggiunge la colonna senza cancellare niente. Niente `migrate:fresh`.
+- Numeri di corde e accordature nell'Enum (`Instrument::tunings()`), unico punto da cambiare per aggiungere, per esempio, il basso a 6 corde o la chitarra a 7. Accordature standard dalla corda più acuta: basso G D A E (B per il 5 corde), chitarra e B G D A E, come nei brani di prova.
+- Il menu delle corde ha i numeri di tutti gli strumenti, raggruppati (`<optgroup>`); lo script mostra solo quelli dello strumento scelto e per la voce lo disattiva. La validazione accetta solo i numeri dello strumento scelto.
+- Il numero di corde serve solo al pulsante: non compare nel foglio, nell'elenco, nell'anteprima né nel Word.
+- Tabulatura vuota: un paragrafo per riga (come quando si incolla una tabulatura), 34 trattini come nell'esempio, senza formattazione propria. Riga vuota di distacco dal testo sopra; su un foglio vuoto o dopo un'interruzione di pagina parte dalla prima riga.
+- Nuova icona `tab-staff` (righe di una tabulatura con un "+").
+- Seeder: i tre brani di prova hanno 4, 5 e 6 corde.
+- Dopo la prima prova nel browser:
+  - campi del form riordinati su due colonne: **Artista, Titolo / Strumento, Corde / Gruppo**;
+  - menu delle corde senza i nomi degli strumenti (niente più `<optgroup>`) e con un valore proposto: basso **4** (in elenco anche 5), chitarra **6** (nessun'altra scelta), voce "—". Nuovo metodo `Instrument::defaultStrings()`; senza numero di corde il server usa quello proposto. L'etichetta è solo "Corde": per basso e chitarra c'è sempre un valore.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `database/migrations/2026_11_25_150000_add_strings_to_songs_table.php` | Nuova: colonna `strings` |
+| `app/Enums/Instrument.php` | `tunings()`, `strings()` e `defaultStrings()` |
+| `app/Models/Song.php` | `strings` tra i fillable, cast integer |
+| `app/Http/Requests/SongRequest.php` | Regola per `strings`; se non arriva, `songData()` usa il numero proposto per lo strumento (null per la voce) |
+| `lang/it/validation.php` | Nome "numero di corde" |
+| `database/seeders/SongSeeder.php` | Numero di corde dei brani di prova |
+| `resources/views/songs/_form.blade.php` | Campo "Corde" accanto allo strumento, Gruppo sotto; pulsante "Inserisci tabulatura vuota" |
+| `resources/views/icons/tab-staff.blade.php` | Nuova icona |
+| `resources/js/tab-editor.js` | Menu delle corde legato allo strumento; stato del pulsante; inserimento della tabulatura |
+
+**Verifiche fatte in fase di sviluppo**
+- [x] PHP: sintassi dei file; `tunings()`/`strings()` per i tre strumenti; strumento non valido → nessun numero ammesso
+- [x] Editor (jsdom): pulsante disattivato senza numero di corde; basso 4 e 5, chitarra 6; cambiando strumento il numero non valido torna a "—" e il gruppo dell'altro strumento sparisce; voce → menu e pulsante disattivati; tabulatura su foglio vuoto, sotto l'intestazione (dopo la riga vuota), dopo un'altra tabulatura (con riga vuota) e dopo un'interruzione di pagina (in cima alla pagina nuova); righe senza formattazione; cursore in fondo
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] `php artisan migrate` (aggiunge la colonna; i brani restano)
+- [ ] Verifica nel browser (con `npm run dev` acceso, oppure `npm run build` per la finestra dell'app)
 
 ---
 

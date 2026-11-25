@@ -4,6 +4,7 @@
     old('campo', valore) mostra prima ciò che l'utente aveva scritto (se la validazione è fallita),
     altrimenti il valore salvato nel database.
 --}}
+@use('App\Enums\Instrument')
 @use('App\Models\Song')
 @use('App\Services\TabDocument')
 
@@ -17,6 +18,11 @@
     // Il foglio viaggia come testo JSON in un campo nascosto: quello appena inviato (se la validazione
     // è fallita), altrimenti quello salvato, altrimenti un documento vuoto.
     $tabJson = old('tab', json_encode($song->tab ?? TabDocument::empty()));
+
+    // Strumento e numero di corde scelti. Per un brano nuovo: il primo strumento (Basso) con il suo
+    // numero di corde proposto (4); se il brano non ha il numero di corde, quello proposto per il suo strumento.
+    $currentInstrument = old('instrument', $song->instrument?->value ?? Instrument::cases()[0]->value);
+    $currentStrings = (string) old('strings', $song->strings ?? Instrument::tryFrom($currentInstrument)?->defaultStrings());
 @endphp
 
 <div class="space-y-6">
@@ -33,8 +39,52 @@
             @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
 
-        {{-- Accanto a Gruppo e Strumento: spunta per scriverli sul foglio, sotto "Artista - Titolo".
+        {{-- Ordine dei campi: Artista, Titolo / Strumento, Corde / Gruppo.
+             Accanto a Strumento e Gruppo: spunta per scriverli sul foglio, sotto "Artista - Titolo".
              Il campo nascosto "0" viene inviato se la casella è vuota. --}}
+        <div>
+            <div class="mb-1 flex items-center justify-between gap-4">
+                <label for="instrument" class="text-sm font-medium">Strumento</label>
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="hidden" name="show_instrument" value="0">
+                    <input type="checkbox" id="show_instrument" name="show_instrument" value="1" class="{{ $check }}"
+                           @checked(old('show_instrument', $song->show_instrument))>
+                    Mostra nel foglio
+                </label>
+            </div>
+            <select id="instrument" name="instrument" class="{{ $field }}">
+                @foreach (Instrument::cases() as $instrument)
+                    <option value="{{ $instrument->value }}"
+                        @selected($currentInstrument === $instrument->value)>
+                        {{ $instrument->label() }}
+                    </option>
+                @endforeach
+            </select>
+            @error('instrument') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- Numero di corde, accanto allo strumento. Ci sono le scelte di tutti gli strumenti
+             (Instrument::tunings()), ognuna con data-instrument; lo script dell'editor mostra solo quelle
+             dello strumento scelto e propone la prima (basso 4, chitarra 6). Con la voce resta solo "—"
+             e il menu è disattivato. data-tuning: le corde, per il pulsante "Inserisci tabulatura vuota". --}}
+        <div>
+            <div class="mb-1 flex items-center">
+                <label for="strings" class="text-sm font-medium">Corde</label>
+            </div>
+            <select id="strings" name="strings" class="{{ $field }} disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500">
+                <option value="">—</option>
+                @foreach (Instrument::cases() as $instrument)
+                    @foreach ($instrument->tunings() as $count => $tuning)
+                        <option value="{{ $count }}" data-instrument="{{ $instrument->value }}" data-tuning="{{ implode(' ', $tuning) }}"
+                            @selected($currentInstrument === $instrument->value && $currentStrings === (string) $count)>
+                            {{ $count }} corde
+                        </option>
+                    @endforeach
+                @endforeach
+            </select>
+            @error('strings') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        </div>
+
         <div>
             <div class="mb-1 flex items-center justify-between gap-4">
                 <label for="band" class="text-sm font-medium">Gruppo <span class="text-gray-500 dark:text-gray-400">(facoltativo)</span></label>
@@ -49,27 +99,6 @@
                    placeholder="La band con cui suoni il brano" class="{{ $field }}">
             @error('band') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
-
-        <div>
-            <div class="mb-1 flex items-center justify-between gap-4">
-                <label for="instrument" class="text-sm font-medium">Strumento</label>
-                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <input type="hidden" name="show_instrument" value="0">
-                    <input type="checkbox" id="show_instrument" name="show_instrument" value="1" class="{{ $check }}"
-                           @checked(old('show_instrument', $song->show_instrument))>
-                    Mostra nel foglio
-                </label>
-            </div>
-            <select id="instrument" name="instrument" class="{{ $field }}">
-                @foreach (\App\Enums\Instrument::cases() as $instrument)
-                    <option value="{{ $instrument->value }}"
-                        @selected(old('instrument', $song->instrument?->value) === $instrument->value)>
-                        {{ $instrument->label() }}
-                    </option>
-                @endforeach
-            </select>
-            @error('instrument') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-        </div>
     </div>
 
     {{--
@@ -79,7 +108,8 @@
         - Sotto, le pagine A4 (21 × 29,7 cm) con margini di 2 cm, disegnate da resources/js/tab-pages.js;
           la zona scrivibile (17 × 25,7 cm, come nel .docx) è segnata da un bordo tratteggiato,
           il testo va a capo al margine e passa alla pagina successiva quando la pagina è piena.
-        - L'ultimo pulsante della barra (o Ctrl+Invio) inserisce un'interruzione di pagina.
+        - Gli ultimi pulsanti della barra inseriscono un'interruzione di pagina (anche con Ctrl+Invio)
+          e, se è scelto il numero di corde, una tabulatura vuota in fondo al foglio.
         L'editor (Tiptap) è in resources/js/tab-editor.js e scrive il documento nel campo nascosto "tab".
         data-home: l'indirizzo dell'elenco, dove porta il tasto Esc.
     --}}
@@ -163,6 +193,13 @@
                 <button type="button" title="Interruzione di pagina (Ctrl+Invio)" aria-label="Interruzione di pagina"
                         data-command="setPageBreak" class="{{ $button }}">
                     @include('icons.page-break')
+                </button>
+
+                {{-- Attivo solo con il numero di corde scelto: lo script aggiorna stato e tooltip. --}}
+                <button type="button" id="tab-staff" title="Inserisci tabulatura vuota (scegli prima il numero di corde)"
+                        aria-label="Inserisci tabulatura vuota" disabled
+                        class="{{ $button }} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent">
+                    @include('icons.tab-staff')
                 </button>
             </div>
 

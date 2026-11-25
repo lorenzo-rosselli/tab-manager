@@ -21,11 +21,15 @@
 | - Pagine: il foglio è mostrato su pagine A4 separate come in Word (calcolo in resources/js/tab-pages.js).
 |   L'interruzione di pagina (pulsante nella barra o Ctrl+Invio) fa iniziare su una pagina nuova
 |   il paragrafo che la segue, anche nel Word.
+| - Numero di corde (campo accanto allo strumento): il menu mostra solo le scelte dello strumento e
+|   propone la prima (basso 4, chitarra 6); per la voce resta "—" ed è disattivato. Con un numero di corde
+|   scelto, il pulsante "Inserisci tabulatura vuota" aggiunge
+|   in fondo al foglio una riga per corda, per esempio "G|----------------------------------".
 */
 
 import { Editor, Extension, Node } from '@tiptap/core';
 import { Fragment, Slice } from '@tiptap/pm/model';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -35,6 +39,7 @@ import { MARGIN, drawPages, paginate, paperHeight, spacer } from './tab-pages.js
 
 const DEFAULT_FONT = 'Lucida Console';
 const DEFAULT_SIZE = 10;
+const STAFF_DASHES = 34; // trattini di ogni riga della tabulatura vuota
 
 // Attributi in più sui paragrafi per riconoscere le righe automatiche.
 // keepOnSplit: false → andando a capo dentro una riga automatica, il nuovo paragrafo è normale.
@@ -501,6 +506,82 @@ if (element) {
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
     }
+
+    /* ---------------- Numero di corde e tabulatura vuota ---------------- */
+
+    const stringsSelect = form.elements.strings;
+    const staffButton = document.getElementById('tab-staff');
+
+    // Nel menu delle corde mostra solo le scelte dello strumento (basso: 4 e 5; chitarra: 6).
+    // Se la scelta attuale non vale per lo strumento (o non c'è), propone la prima: basso 4, chitarra 6.
+    // La voce non ha scelte: resta solo "—" e il menu è disattivato.
+    function syncStrings() {
+        const options = [...stringsSelect.options];
+        const own = options.filter((option) => option.dataset.instrument === fields.instrument.value);
+        const empty = options.find((option) => option.value === '');
+
+        options.forEach((option) => {
+            const visible = own.length ? own.includes(option) : option === empty;
+            option.hidden = !visible;
+            option.disabled = !visible;
+        });
+
+        if (!own.includes(stringsSelect.selectedOptions[0])) {
+            (own[0] ?? empty).selected = true;
+        }
+        stringsSelect.disabled = own.length === 0;
+        refreshStaffButton();
+    }
+
+    // Il pulsante della tabulatura vuota è attivo solo con un numero di corde scelto.
+    function refreshStaffButton() {
+        const strings = stringsSelect.disabled ? '' : stringsSelect.value;
+
+        staffButton.disabled = strings === '';
+        staffButton.title = strings === ''
+            ? 'Inserisci tabulatura vuota (scegli prima il numero di corde)'
+            : `Inserisci tabulatura vuota (${strings} corde)`;
+    }
+
+    // Aggiunge in fondo al foglio una tabulatura vuota: un paragrafo per corda, dalla più acuta
+    // ("G|-----…" per il basso a 4 corde), senza formattazione (Lucida Console 10 pt, a sinistra).
+    // Tra il testo sopra e la tabulatura resta una riga vuota: se il foglio finisce già con una riga
+    // vuota si usa quella. In cima al foglio o a una pagina nuova la tabulatura parte dalla prima riga.
+    function insertStaff() {
+        const tuning = stringsSelect.selectedOptions[0]?.dataset.tuning;
+
+        if (!tuning) {
+            return;
+        }
+
+        const { schema, doc, tr } = editor.state;
+        const lines = tuning.split(' ').map((name) => (
+            schema.nodes.paragraph.create(null, schema.text(`${name}|${'-'.repeat(STAFF_DASHES)}`))
+        ));
+        const end = doc.content.size;
+        const last = doc.lastChild;
+        const lastEmpty = last.type.name === 'paragraph' && last.content.size === 0;
+        const before = doc.childCount > 1 ? doc.child(doc.childCount - 2) : null; // blocco prima dell'ultimo
+
+        if (lastEmpty && (!before || before.type.name === 'pageBreak')) {
+            tr.replaceWith(end - last.nodeSize, end, lines);          // foglio vuoto o pagina nuova vuota
+        } else if (lastEmpty || last.type.name === 'pageBreak') {
+            tr.insert(end, lines);                                    // c'è già la riga vuota di distacco
+        } else {
+            tr.insert(end, [schema.nodes.paragraph.create(), ...lines]);
+        }
+
+        tr.setSelection(Selection.atEnd(tr.doc)); // cursore in fondo all'ultima riga inserita
+        tr.scrollIntoView();
+        editor.view.dispatch(tr);
+        editor.view.focus();
+    }
+
+    staffButton.addEventListener('mousedown', (event) => event.preventDefault());
+    staffButton.addEventListener('click', insertStaff);
+    stringsSelect.addEventListener('change', refreshStaffButton);
+    fields.instrument.addEventListener('change', syncStrings);
+    syncStrings();
 
     /* ---------------- Righe automatiche ---------------- */
 

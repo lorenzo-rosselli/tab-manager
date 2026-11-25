@@ -28,6 +28,7 @@ return [
         'artist' => 'artista',
         'band' => 'gruppo',
         'instrument' => 'strumento',
+        'strings' => 'numero di corde',
         'show_instrument' => 'mostra strumento',
         'show_band' => 'mostra gruppo',
         'tab' => 'tabulatura',

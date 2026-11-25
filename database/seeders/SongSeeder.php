@@ -18,6 +18,7 @@ class SongSeeder extends Seeder
             title: 'Groove di prova in La',
             band: 'I Prova Generale',
             instrument: Instrument::Bass,
+            strings: 4,
             showInstrument: true,
             showBand: true,
             text: <<<'TAB'
@@ -37,6 +38,7 @@ TAB,
             title: 'Linea a cinque corde',
             band: null,
             instrument: Instrument::Bass,
+            strings: 5,
             showInstrument: true,
             showBand: false,
             text: <<<'TAB'
@@ -54,6 +56,7 @@ TAB,
             title: 'Arpeggio di studio',
             band: 'Trio Acustico',
             instrument: Instrument::Guitar,
+            strings: 6,
             showInstrument: false,
             showBand: true,
             text: <<<'TAB'
@@ -71,7 +74,7 @@ TAB,
      * Crea un brano: il foglio contiene le righe automatiche (artista - titolo, strumento, gruppo)
      * seguite da una riga vuota e dalla tabulatura.
      */
-    private function song(string $title, ?string $band, Instrument $instrument, bool $showInstrument, bool $showBand, string $text): void
+    private function song(string $title, ?string $band, Instrument $instrument, int $strings, bool $showInstrument, bool $showBand, string $text): void
     {
         $artist = 'Esercizi Tab Manager';
 
@@ -80,6 +83,7 @@ TAB,
             'artist' => $artist,
             'band' => $band,
             'instrument' => $instrument,
+            'strings' => $strings,
             'show_instrument' => $showInstrument,
             'show_band' => $showBand,
             'tab' => TabDocument::make(

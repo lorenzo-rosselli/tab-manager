@@ -36,6 +36,9 @@ class SongRequest extends FormRequest
             'band' => ['nullable', 'string', 'max:255'],
             // Valori ammessi: quelli dell'Enum Instrument (bass, guitar, voice), letti dall'Enum stesso.
             'instrument' => ['required', Rule::in(array_column(Instrument::cases(), 'value'))],
+            // Numero di corde (facoltativo): solo quelli dello strumento scelto (basso 4 o 5, chitarra 6,
+            // voce nessuno). Se lo strumento non è valido non è ammesso nessun valore.
+            'strings' => ['nullable', Rule::in(Instrument::tryFrom((string) $this->input('instrument'))?->strings() ?? [])],
             'show_instrument' => ['required', 'boolean'],
             'show_band' => ['required', 'boolean'],
             // Il foglio arriva come testo JSON (lo scrive l'editor in un campo nascosto)
@@ -60,6 +63,9 @@ class SongRequest extends FormRequest
     {
         $data = $this->validated();
         $data['tab'] = json_decode($data['tab'], true);
+        // Senza numero di corde (con la voce il menu è disattivato e il browser non lo invia) si usa quello
+        // proposto per lo strumento: basso 4, chitarra 6, voce nessuno. Così in modifica non resta il vecchio.
+        $data['strings'] ??= Instrument::from($data['instrument'])->defaultStrings();
 
         return $data;
     }
