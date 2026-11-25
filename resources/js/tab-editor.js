@@ -16,8 +16,9 @@
 | - Testo incollato (dal foglio stesso, da Word o da una pagina web): colori ed evidenziatori vengono
 |   riconosciuti e convertiti nella forma #RRGGBB; l'evidenziatore diventa il più vicino tra quelli di Word.
 |   Anche font e dimensione vengono puliti ("10.0pt" → "10pt", virgolette tolte).
-| - Le tavolozze dei colori si chiudono cliccando fuori o con Esc; con nessuna tavolozza aperta,
-|   Esc porta all'elenco dei brani.
+| - Le tavolozze dei colori si chiudono cliccando fuori o con Esc. Esc non fa uscire dal form,
+|   così non si perdono le modifiche per sbaglio.
+| - Annulla con modifiche non salvate: prima di uscire chiede conferma (finestra #discard-changes).
 | - Pagine: il foglio è mostrato su pagine A4 separate come in Word (calcolo in resources/js/tab-pages.js).
 |   L'interruzione di pagina (pulsante nella barra o Ctrl+Invio) fa iniziare su una pagina nuova
 |   il paragrafo che la segue, anche nel Word.
@@ -455,7 +456,7 @@ if (element) {
         });
     });
 
-    // Esc: chiude la tavolozza aperta; se non ce ne sono, torna all'elenco dei brani.
+    // Esc: chiude la tavolozza aperta (e basta: non fa uscire dal form).
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) {
             return;
@@ -466,8 +467,6 @@ if (element) {
         if (open) {
             open.open = false;
             open.querySelector('summary').focus();
-        } else {
-            window.location.href = element.dataset.home;
         }
     });
 
@@ -673,6 +672,27 @@ if (element) {
 
     ['title', 'artist', 'band'].forEach((name) => fields[name].addEventListener('input', syncAutoLines));
     [fields.instrument, fields.showInstrument, fields.showBand].forEach((field) => field.addEventListener('change', syncAutoLines));
+
+    /* ---------------- Annulla con modifiche non salvate ---------------- */
+
+    // "Fotografia" del form: tutti i campi (tranne il token di sicurezza) e il documento dell'editor.
+    // Il foglio si confronta con getJSON() e non con il campo nascosto, così scrivere e poi annullare
+    // con Ctrl+Z non conta come modifica.
+    const formState = () => JSON.stringify([
+        [...new FormData(form)].filter(([name]) => !['_token', '_method', 'tab'].includes(name)),
+        editor.getJSON(),
+    ]);
+    const initialState = formState(); // presa qui, dopo la preparazione del form (es. corde proposte)
+    const cancelLink = document.getElementById('form-cancel');
+    const discardDialog = document.getElementById('discard-changes');
+
+    // Annulla: se qualcosa è cambiato, invece di uscire apre la finestra di conferma.
+    cancelLink?.addEventListener('click', (event) => {
+        if (discardDialog && formState() !== initialState) {
+            event.preventDefault();
+            discardDialog.showPopover();
+        }
+    });
 
     refreshToolbar();
 }

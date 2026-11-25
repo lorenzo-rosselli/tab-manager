@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester; pulizia e riordino delle cartelle; disinstallazione; numero di corde e tabulatura vuota; pulsanti in alto; Annulla sicuro |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -681,6 +681,38 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 **Avanzamento**
 - [x] Codice scritto
 - [ ] Verifica nel browser
+
+### Parte 15 – Annulla sicuro (25/11/2026) 🔄
+
+Dalla revisione dell'app a fine tappa 6.
+
+**Richieste**
+37. Correggere il **bug di Annulla**: portava alla pagina precedente (`url()->previous()`), che dopo un errore di validazione è il form stesso, quindi Annulla ricaricava il form invece di uscire.
+38. Non perdere il lavoro per sbaglio: **togliere l'uscita con Esc** dal form e chiedere **conferma prima di Annulla**.
+
+**Decisioni**
+- Annulla porta a un indirizzo fisso, passato a `_form-header` come `$cancelUrl`: elenco per un brano nuovo, anteprima per un brano in modifica.
+- Esc nel form chiude solo le tavolozze; tolto l'attributo `data-home` dal foglio. Nell'anteprima Esc resta com'era (torna all'elenco): lì non c'è niente da perdere.
+- Conferma solo se c'è davvero qualcosa da perdere: `tab-editor.js` fotografa il form all'apertura (campi + documento dell'editor) e al clic su Annulla lo confronta con lo stato attuale. Senza modifiche (o dopo aver annullato con Ctrl+Z) esce subito.
+- Finestra di conferma con l'API Popover, come quella dell'eliminazione: "Uscire senza salvare?", icone matita ("Continua a modificare") e ✕ rossa ("Esci senza salvare").
+- Non coperti, per ora: i link dell'intestazione (logo, "Nuovo brano") e la chiusura della finestra. Si potrebbe aggiungere l'avviso del browser `beforeunload`.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `resources/views/songs/_form-header.blade.php` | Annulla con `$cancelUrl` e id `form-cancel`; finestra di conferma `discard-changes` |
+| `resources/views/songs/create.blade.php`, `edit.blade.php` | Passano `cancelUrl` (elenco / anteprima) |
+| `resources/views/songs/_form.blade.php` | Tolto `data-home` |
+| `resources/js/tab-editor.js` | Esc chiude solo le tavolozze; controllo delle modifiche prima di Annulla |
+| `resources/js/app.js` | Solo il commento sul tasto Esc |
+
+**Verifiche fatte in fase di sviluppo** (jsdom)
+- [x] Nessuna modifica → Annulla esce; testo scritto → finestra di conferma; scritto e annullato con Ctrl+Z → esce; numero di corde cambiato → conferma; rimesso com'era → esce
+- [x] Esc nel form non cambia pagina
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Verifica nel browser (anche: errore di validazione e poi Annulla)
 
 ---
 

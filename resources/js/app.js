@@ -11,7 +11,7 @@
 |
 | Tasto Esc: nelle pagine con un elemento data-escape-to (l'anteprima del brano) porta a quell'indirizzo.
 | Se è aperta la finestra di conferma dell'eliminazione, Esc chiude solo quella.
-| Nel form il tasto Esc è gestito da resources/js/tab-editor.js (prima chiude le tavolozze).
+| Nel form Esc non fa uscire (si perderebbero le modifiche): chiude solo le tavolozze (resources/js/tab-editor.js).
 */
 
 const toggle = document.getElementById('theme-toggle');

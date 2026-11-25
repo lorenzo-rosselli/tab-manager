@@ -112,7 +112,6 @@
         - Gli ultimi pulsanti della barra inseriscono un'interruzione di pagina (anche con Ctrl+Invio)
           e, se è scelto il numero di corde, una tabulatura vuota in fondo al foglio.
         L'editor (Tiptap) è in resources/js/tab-editor.js e scrive il documento nel campo nascosto "tab".
-        data-home: l'indirizzo dell'elenco, dove porta il tasto Esc.
     --}}
     <div>
         <span class="mb-1 block text-sm font-medium" id="tab-label">Tabulatura</span>
@@ -207,7 +206,7 @@
             <div class="overflow-x-auto rounded-b-md bg-gray-200 p-6 dark:bg-gray-800 sm:p-10">
                 <div class="tab-paper">
                     <div class="tab-paper-pages" aria-hidden="true"></div>
-                    <div id="tab-editor" data-home="{{ route('songs.index') }}" class="tab-sheet"></div>
+                    <div id="tab-editor" class="tab-sheet"></div>
                 </div>
             </div>
         </div>
