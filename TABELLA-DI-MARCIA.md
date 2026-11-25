@@ -16,7 +16,7 @@
 | 3 | Rotte e controller | ✅ Completata | Rotte `/songs`, `SongController`, `SongRequest` |
 | 4 | Viste | ✅ Completata | Layout, elenco, form, anteprima (Blade + Tailwind) |
 | 5 | Export Word | ✅ Completata | Servizio `TabDocxGenerator`, download del `.docx` |
-| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop |
+| 6 | Rifiniture | 🔄 In corso | Messaggi flash, conferma eliminazione, ricerca, italiano; via accordatura e note, Gruppo, ordinamento multiplo, foglio e barra stile Word, riga cliccabile, tema scuro; editor di testo ricco, righe automatiche, colore ed evidenziatore; Artista prima di Titolo, interruttore del tema; azzera ordinamento sopra la tabella; ricerca per strumento, Esc, tavolozze, formattazione incollata, testo della modale, strumento Voce; pagine A4 e interruzione di pagina; icona e app desktop; installazione con un doppio clic per un tester |
 | 7 | Test | ⬜ Da fare | Test Pest su tutte le funzioni principali |
 
 Legenda: ✅ completata · 🔄 in corso · ⬜ da fare
@@ -532,7 +532,43 @@ Dalla lista di prove della tappa 6 (52 prove su tema, elenco, eliminazione, form
 **Avanzamento**
 - [x] Codice scritto
 - [ ] `npm run build`
-- [ ] `powershell -NoProfile -File desktop\install-shortcut.ps1` e prova del collegamento (apertura, icona nella barra delle applicazioni, chiusura = server spento)
+- [x] `powershell -NoProfile -File desktop\install-shortcut.ps1` e prova del collegamento ("mi sembra tutto ben funzionante")
+
+### Parte 10 – Installazione con un doppio clic per un tester (25/11/2026) 🔄
+
+**Richiesta**
+29. Far provare l'app a un'altra persona nel modo più semplice: **scaricare lo ZIP da GitHub** e **avviare un "eseguibile"** che fa l'eventuale installazione.
+
+**Vincoli**
+- I file scaricati con il browser hanno il segno "da Internet" (Mark of the Web), che passa ai file estratti dallo ZIP; con Smart App Control attivo `.cmd`, `.ps1`, `.lnk` segnati sono bloccati senza possibilità di aggirare il blocco. Un vero `.exe` nostro sarebbe bloccato comunque (non firmato).
+- Su un Windows nuovo PowerShell non esegue script (Execution Policy `Restricted`).
+
+**Decisioni**
+- Un clic in più per il tester: **sbloccare lo ZIP** (Proprietà → Sblocca) prima di estrarlo. Poi doppio clic su **`Installa Tab Manager.cmd`**, nella cartella principale.
+- Il `.cmd` avvia `desktop\setup.ps1` con `-ExecutionPolicy Bypass` (solo per quell'avvio). Lo script installa PHP e Composer (php.new) e Node.js (winget) se mancano, poi esegue `composer install`, `npm install` e `npm run build`, crea `.env` (solo la prima volta) e il database, crea i collegamenti e apre l'app. Si rilancia anche per aggiornare.
+- I brani del tester stanno in **`%LOCALAPPDATA%\TabManager\database.sqlite`**, fuori dalla cartella dell'app: aggiornando con un nuovo ZIP non si perdono. Sul computer di sviluppo (`.env` già presente) non cambia niente.
+- Node.js installato in automatico invece di mettere su GitHub l'interfaccia già compilata: altrimenti bisognerebbe ricordarsi `npm run build` prima di ogni push.
+- Anche il collegamento usa `-ExecutionPolicy Bypass`: l'app parte senza cambiare le impostazioni del PC del tester.
+- `.gitattributes`: `*.cmd` e `*.ps1` con terminazioni CRLF.
+- Istruzioni per il tester nel `README.md`.
+
+**File coinvolti**
+| File | Modifica |
+|---|---|
+| `Installa Tab Manager.cmd` | Nuovo: il file da cliccare |
+| `desktop/setup.ps1` | Nuovo: installazione e aggiornamento |
+| `desktop/install-shortcut.ps1` | `-ExecutionPolicy Bypass` nel collegamento |
+| `.gitattributes` | CRLF per `.cmd` e `.ps1` |
+| `README.md` | Istruzioni di installazione, aggiornamento e problemi comuni |
+
+**Verifiche fatte in fase di sviluppo**
+- [x] Script senza errori di sintassi (parser di PowerShell 7); `.cmd` solo con caratteri ASCII e CRLF
+- [x] Creazione del `.env` dal vero `.env.example`: `DB_DATABASE` al posto giusto, percorso con spazi tra apici, chiave vuota riconosciuta
+
+**Avanzamento**
+- [x] Codice scritto
+- [ ] Commit e push
+- [ ] Prova su un PC (o un account Windows) senza PHP e Node: ZIP sbloccato, installazione, collegamento, aggiornamento con un nuovo ZIP
 
 ---
 

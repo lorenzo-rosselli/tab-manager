@@ -49,12 +49,29 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 ### Avvio come app desktop (finestra dedicata)
 Per l'uso di tutti i giorni l'app si apre dal collegamento **"Tab Manager"** (sul desktop e nella cartella del progetto), senza terminali: una finestra tutta sua, senza barra degli indirizzi, schede o menu, con titolo e icona di Tab Manager (anche nella barra delle applicazioni).
 - **Perché non un programma compilato** (per esempio con NativePHP/Electron): un eseguibile costruito da noi non sarebbe firmato e Smart App Control lo bloccherebbe. Si usa invece Microsoft Edge, già installato e firmato, in "modalità app" (`--app=`), che mostra solo la pagina. Nessuna libreria in più.
-- File nella cartella `desktop/` del progetto:
+- File nella cartella `desktop/` del progetto (oltre a `setup.ps1`, vedi "Installazione su un altro computer"):
   - `tab-manager.ps1`: script di avvio. Trova PHP (nel PATH o in `%USERPROFILE%\.config\herd-lite\bin`) ed Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server. Se il server è già acceso (seconda finestra), apre solo la finestra. Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
-  - `install-shortcut.ps1`: crea il collegamento `Tab Manager.lnk` sul desktop e nella cartella del progetto (da eseguire una volta, e di nuovo se si sposta la cartella del progetto, con `powershell -NoProfile -File desktop\install-shortcut.ps1`: funziona sia da PowerShell sia dal Prompt dei comandi, dove scrivere solo il nome del file `.ps1` lo aprirebbe nel Blocco note). Il collegamento lancia `conhost.exe --headless powershell.exe -NoProfile -File desktop\tab-manager.ps1`, cioè lo script senza nessuna finestra del terminale, con l'icona `desktop\tab-manager.ico`. Il collegamento contiene percorsi assoluti di questo computer, quindi quello nella cartella del progetto è nel `.gitignore` (`/Tab Manager.lnk`);
+  - `install-shortcut.ps1`: crea il collegamento `Tab Manager.lnk` sul desktop e nella cartella del progetto (da eseguire una volta, e di nuovo se si sposta la cartella del progetto, con `powershell -NoProfile -File desktop\install-shortcut.ps1`: funziona sia da PowerShell sia dal Prompt dei comandi, dove scrivere solo il nome del file `.ps1` lo aprirebbe nel Blocco note). Il collegamento lancia `conhost.exe --headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File desktop\tab-manager.ps1`, cioè lo script senza nessuna finestra del terminale (`-ExecutionPolicy Bypass` vale solo per quell'avvio: l'app parte anche dove PowerShell non esegue script, impostazione predefinita `Restricted`), con l'icona `desktop\tab-manager.ico`. Il collegamento contiene percorsi assoluti di questo computer, quindi quello nella cartella del progetto è nel `.gitignore` (`/Tab Manager.lnk`);
   - `tab-manager.ico`: l'icona (16–256 px).
 - Gli script sono salvati in UTF-8 **con BOM**: Windows PowerShell 5.1 senza BOM leggerebbe male le lettere accentate. Girano con la Execution Policy `RemoteSigned` già impostata (sono file locali).
 - L'interfaccia usa i file compilati da **`npm run build`** (cartella `public/build`), da rifare dopo ogni modifica al codice. Se `npm run dev` è acceso, la finestra usa quello. Il file `public/hot` rimasto da un `npm run dev` chiuso male (server di Vite spento) viene tolto dallo script, altrimenti le pagine resterebbero senza stile.
+
+### Installazione su un altro computer (tester)
+Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (istruzioni per lui nel `README.md`):
+1. su GitHub **Code → Download ZIP**;
+2. prima di estrarre: tasto destro sullo ZIP → Proprietà → **Sblocca**. Windows segna i file scaricati da Internet ("Mark of the Web") e i file estratti ereditano il segno; con Smart App Control attivo i file eseguibili segnati (`.cmd`, `.ps1`, `.lnk`, …) vengono bloccati senza possibilità di aggirare il blocco. Un `.exe` costruito da noi sarebbe bloccato comunque, perché non firmato: per questo l'"eseguibile" è un file di comandi;
+3. "Estrai tutto" e doppio clic su **`Installa Tab Manager.cmd`** (nella cartella principale del progetto). Il file avvia `desktop\setup.ps1` con `-ExecutionPolicy Bypass` (solo per quell'avvio) e alla fine resta aperto con `pause`, così si leggono eventuali errori.
+
+`desktop\setup.ps1` (installazione **e** aggiornamento: si può rilanciare quando si vuole):
+- toglie il segno di Internet ai file dell'app (`Unblock-File`), nel caso lo ZIP non fosse stato sbloccato;
+- **PHP e Composer**: se mancano li installa con il comando ufficiale di php.new (`https://php.new/install/windows/8.5`), in un PowerShell separato; controlla che PHP sia almeno 8.3;
+- **Node.js**: se manca lo installa con `winget install OpenJS.NodeJS.LTS` (Windows chiede una conferma); serve solo a compilare l'interfaccia;
+- **`.env`**: solo se non esiste, lo crea da `.env.example` con `DB_DATABASE` che punta a **`%LOCALAPPDATA%\TabManager\database.sqlite`** (fuori dalla cartella dell'app, così un nuovo ZIP non cancella i brani; percorso con le barre `/` tra apici). Se `.env` esiste già (per esempio sul computer di sviluppo) non viene toccato, e il database resta quello indicato lì (`database/database.sqlite` se `DB_DATABASE` manca);
+- `composer install`, `php artisan key:generate` (solo se manca la chiave), `npm install`, `npm run build`;
+- **database**: se il file non esiste lo crea, poi `migrate --force` e `db:seed --force` (i tre brani di prova); se esiste, solo `migrate --force` (i brani restano);
+- esegue `install-shortcut.ps1` e apre l'app dal collegamento.
+
+In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anche nello ZIP di GitHub): `cmd.exe` e PowerShell 5.1 le vogliono così.
 
 ---
 
