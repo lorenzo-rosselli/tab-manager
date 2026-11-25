@@ -1,9 +1,35 @@
 @import 'tailwindcss';
 
+/* Tema scuro: le classi dark:... valgono quando <html> ha la classe "dark" (non secondo il sistema operativo). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/*
+| Foglio della tabulatura (editor nel form e anteprima): come una pagina Word.
+| Il testo senza formattazione propria usa Lucida Console 10 pt; i paragrafi non hanno spazi
+| tra loro (interlinea singola) e un paragrafo vuoto resta una riga vuota.
+*/
+.tab-sheet {
+    font-family: 'Lucida Console', monospace;
+    font-size: 10pt;
+    line-height: 1.15;
+    color: #111827;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.tab-sheet p {
+    margin: 0;
+}
+
+.tab-sheet .ProseMirror {
+    min-height: 25.7cm;
+    outline: none;
 }

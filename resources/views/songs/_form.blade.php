@@ -4,25 +4,63 @@
     old('campo', valore) mostra prima ciò che l'utente aveva scritto (se la validazione è fallita),
     altrimenti il valore salvato nel database.
 --}}
+@use('App\Models\Song')
+@use('App\Services\TabDocument')
+
+@php
+    $field = 'w-full rounded-md border border-gray-300 bg-white dark:border-gray-600 px-3 py-2 text-gray-900 scheme-light';
+    $check = 'size-4 rounded border-gray-400 accent-gray-700 dark:accent-gray-200';
+    $button = 'flex size-8 cursor-pointer items-center justify-center rounded text-gray-700 hover:bg-gray-200 '
+        .'aria-pressed:bg-gray-300 aria-pressed:text-gray-900 aria-pressed:ring-1 aria-pressed:ring-gray-400 '
+        .'dark:text-gray-200 dark:hover:bg-gray-700 dark:aria-pressed:bg-gray-600 dark:aria-pressed:text-white';
+
+    // Il foglio viaggia come testo JSON in un campo nascosto: quello appena inviato (se la validazione
+    // è fallita), altrimenti quello salvato, altrimenti un documento vuoto.
+    $tabJson = old('tab', json_encode($song->tab ?? TabDocument::empty()));
+@endphp
+
 <div class="space-y-6">
     <div class="grid gap-6 sm:grid-cols-2">
         <div>
-            <label for="title" class="mb-1 block text-sm font-medium">Titolo</label>
-            <input type="text" id="title" name="title" value="{{ old('title', $song->title) }}"
-                   class="w-full rounded-md border border-stone-300 px-3 py-2">
-            @error('title') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-        </div>
-
-        <div>
             <label for="artist" class="mb-1 block text-sm font-medium">Artista</label>
-            <input type="text" id="artist" name="artist" value="{{ old('artist', $song->artist) }}"
-                   class="w-full rounded-md border border-stone-300 px-3 py-2">
-            @error('artist') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+            <input type="text" id="artist" name="artist" value="{{ old('artist', $song->artist) }}" class="{{ $field }}">
+            @error('artist') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
 
         <div>
-            <label for="instrument" class="mb-1 block text-sm font-medium">Strumento</label>
-            <select id="instrument" name="instrument" class="w-full rounded-md border border-stone-300 px-3 py-2">
+            <label for="title" class="mb-1 block text-sm font-medium">Titolo</label>
+            <input type="text" id="title" name="title" value="{{ old('title', $song->title) }}" class="{{ $field }}">
+            @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        </div>
+
+        {{-- Accanto a Gruppo e Strumento: spunta per scriverli sul foglio, sotto "Artista - Titolo".
+             Il campo nascosto "0" viene inviato se la casella è vuota. --}}
+        <div>
+            <div class="mb-1 flex items-center justify-between gap-4">
+                <label for="band" class="text-sm font-medium">Gruppo <span class="text-gray-500 dark:text-gray-400">(facoltativo)</span></label>
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="hidden" name="show_band" value="0">
+                    <input type="checkbox" id="show_band" name="show_band" value="1" class="{{ $check }}"
+                           @checked(old('show_band', $song->show_band))>
+                    Mostra nel foglio
+                </label>
+            </div>
+            <input type="text" id="band" name="band" value="{{ old('band', $song->band) }}"
+                   placeholder="La band con cui suoni il brano" class="{{ $field }}">
+            @error('band') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        </div>
+
+        <div>
+            <div class="mb-1 flex items-center justify-between gap-4">
+                <label for="instrument" class="text-sm font-medium">Strumento</label>
+                <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="hidden" name="show_instrument" value="0">
+                    <input type="checkbox" id="show_instrument" name="show_instrument" value="1" class="{{ $check }}"
+                           @checked(old('show_instrument', $song->show_instrument))>
+                    Mostra nel foglio
+                </label>
+            </div>
+            <select id="instrument" name="instrument" class="{{ $field }}">
                 @foreach (\App\Enums\Instrument::cases() as $instrument)
                     <option value="{{ $instrument->value }}"
                         @selected(old('instrument', $song->instrument?->value) === $instrument->value)>
@@ -30,48 +68,124 @@
                     </option>
                 @endforeach
             </select>
-            @error('instrument') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-        </div>
-
-        <div>
-            <label for="tuning" class="mb-1 block text-sm font-medium">Accordatura</label>
-            <input type="text" id="tuning" name="tuning" list="tunings"
-                   value="{{ old('tuning', $song->tuning) }}" placeholder="E A D G"
-                   class="w-full rounded-md border border-stone-300 px-3 py-2">
-            {{-- Suggerimenti mostrati dal browser mentre si scrive (HTML puro, nessun JavaScript) --}}
-            <datalist id="tunings">
-                <option value="E A D G">Basso 4 corde</option>
-                <option value="B E A D G">Basso 5 corde</option>
-                <option value="E A D G B E">Chitarra 6 corde</option>
-            </datalist>
-            @error('tuning') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+            @error('instrument') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
     </div>
 
+    {{--
+        Il foglio: è esattamente il documento Word che verrà scaricato.
+        - In alto la barra di formattazione (come in Word): agisce sul testo selezionato
+          (font, dimensione, G/C/S) o sui paragrafi selezionati (allineamento).
+        - Sotto, la pagina A4 larga 21 cm con margini di 2 cm; la zona scrivibile (17 cm, come nel .docx)
+          è segnata da un bordo tratteggiato e il testo va a capo al margine.
+        L'editor (Tiptap) è in resources/js/tab-editor.js e scrive il documento nel campo nascosto "tab".
+        data-home: l'indirizzo dell'elenco, dove porta il tasto Esc.
+    --}}
     <div>
-        <label for="tab" class="mb-1 block text-sm font-medium">Tabulatura</label>
-        <textarea id="tab" name="tab" rows="20" wrap="off" spellcheck="false"
-                  class="w-full rounded-md border border-stone-300 px-3 py-2 font-mono text-sm">{{ old('tab', $song->tab) }}</textarea>
-        <p class="mt-1 text-sm text-stone-500">
-            Nel file Word una riga sta in circa 80 caratteri: le righe più lunghe andranno a capo.
+        <span class="mb-1 block text-sm font-medium" id="tab-label">Tabulatura</span>
+
+        <div class="rounded-md border border-gray-300 dark:border-gray-700">
+            <div id="tab-toolbar" role="toolbar" aria-labelledby="tab-label"
+                 class="flex flex-wrap items-center gap-1 rounded-t-md border-b border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-950 px-3 py-2">
+                <select id="tab-font" title="Font" aria-label="Font"
+                        class="w-44 rounded border border-gray-300 bg-white dark:border-gray-600 px-2 py-1 text-sm text-gray-900 scheme-light">
+                    @foreach (Song::FONTS as $option)
+                        <option value="{{ $option }}" style="font-family: '{{ $option }}', monospace">{{ $option }}</option>
+                    @endforeach
+                </select>
+
+                <select id="tab-size" title="Dimensione carattere" aria-label="Dimensione carattere"
+                        class="w-20 rounded border border-gray-300 bg-white dark:border-gray-600 px-2 py-1 text-sm text-gray-900 scheme-light">
+                    @foreach (Song::FONT_SIZES as $option)
+                        <option value="{{ $option }}">{{ $option }} pt</option>
+                    @endforeach
+                </select>
+
+                <span class="mx-2 h-6 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+
+                {{-- G / C / S come nel Word italiano --}}
+                @foreach (['bold' => ['G', 'Grassetto', 'font-bold', 'toggleBold'], 'italic' => ['C', 'Corsivo', 'italic font-serif', 'toggleItalic'], 'underline' => ['S', 'Sottolineato', 'underline', 'toggleUnderline']] as $mark => [$letter, $label, $style, $command])
+                    <button type="button" title="{{ $label }}" aria-label="{{ $label }}" aria-pressed="false"
+                            data-command="{{ $command }}" data-mark="{{ $mark }}" class="{{ $button }}">
+                        <span class="text-lg leading-none {{ $style }}" aria-hidden="true">{{ $letter }}</span>
+                    </button>
+                @endforeach
+
+                <span class="mx-2 h-6 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+
+                {{-- Colore del testo ed evidenziatore: menu a tendina (<details>) con la tavolozza.
+                     La barretta colorata sotto l'icona mostra il colore attuale. --}}
+                @foreach ([
+                    'color' => ['Colore carattere', 'Automatico', Song::TEXT_COLORS, 'tab-color-bar'],
+                    'highlight' => ['Colore evidenziazione testo', 'Nessuno', array_map(fn ($h) => $h[0], Song::HIGHLIGHTS), 'tab-highlight-bar'],
+                ] as $palette => [$label, $none, $colors, $barId])
+                    <details class="relative">
+                        <summary title="{{ $label }}" aria-label="{{ $label }}"
+                                 class="flex h-8 w-10 cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded text-gray-700 hover:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-700 [&::-webkit-details-marker]:hidden">
+                            @if ($palette === 'color')
+                                <span class="text-base font-bold leading-none" aria-hidden="true">A</span>
+                            @else
+                                <span class="*:size-4" aria-hidden="true">@include('icons.highlighter')</span>
+                            @endif
+                            <span id="{{ $barId }}" class="h-1 w-5 rounded-sm border border-gray-600" aria-hidden="true"></span>
+                        </summary>
+                        <div class="absolute left-0 top-full z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                            <button type="button" data-palette="{{ $palette }}" data-value=""
+                                    class="mb-2 flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700">
+                                <span class="size-4 rounded-sm border border-gray-500 {{ $palette === 'color' ? 'bg-black' : 'bg-white' }}"></span>
+                                {{ $none }}
+                            </button>
+                            <div class="grid grid-cols-5 gap-1">
+                                @foreach ($colors as $hex => $name)
+                                    <button type="button" data-palette="{{ $palette }}" data-value="{{ $hex }}"
+                                            title="{{ $name }}" aria-label="{{ $name }}"
+                                            class="size-7 cursor-pointer rounded-sm border border-gray-300 hover:ring-2 hover:ring-gray-900 dark:border-gray-600 dark:hover:ring-white"
+                                            style="background-color: {{ $hex }}"></button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </details>
+                @endforeach
+
+                <span class="mx-2 h-6 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+
+                @foreach (Song::ALIGNMENTS as $value => $label)
+                    <button type="button" title="{{ $label }}" aria-label="{{ $label }}" aria-pressed="false"
+                            data-command="align" data-value="{{ $value }}" class="{{ $button }}">
+                        @include('icons.align-'.$value)
+                    </button>
+                @endforeach
+            </div>
+
+            <div class="overflow-x-auto rounded-b-md bg-gray-200 p-6 dark:bg-gray-800 sm:p-10">
+                <div class="mx-auto w-[21cm] bg-white p-[2cm] shadow-lg shadow-black/20 dark:shadow-black/50">
+                    <div id="tab-editor" data-home="{{ route('songs.index') }}"
+                         class="tab-sheet outline-1 outline-offset-4 outline-gray-300 outline-dashed focus-within:outline-gray-500"></div>
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" id="tab" name="tab" value="{{ $tabJson }}">
+
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Il foglio è il documento Word: stessa pagina A4, stessi margini, stessa formattazione.
+            La formattazione si applica al testo selezionato.
         </p>
-        @error('tab') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
+        @error('tab') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        @foreach (['show_band', 'show_instrument'] as $name)
+            @error($name) <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+        @endforeach
     </div>
 
-    <div>
-        <label for="notes" class="mb-1 block text-sm font-medium">Note <span class="text-stone-500">(facoltative)</span></label>
-        <textarea id="notes" name="notes" rows="3"
-                  class="w-full rounded-md border border-stone-300 px-3 py-2">{{ old('notes', $song->notes) }}</textarea>
-        @error('notes') <p class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
-    </div>
+    @vite('resources/js/tab-editor.js')
 
     <div class="flex items-center gap-2">
         <button type="submit" title="{{ $submitLabel }}" aria-label="{{ $submitLabel }}"
-                class="cursor-pointer rounded-md bg-stone-900 p-2 text-white hover:bg-stone-700">
+                class="cursor-pointer rounded-md bg-gray-900 p-2 text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white">
             @include('icons.save')
         </button>
         <a href="{{ url()->previous() }}" title="Annulla" aria-label="Annulla"
-           class="rounded-md p-2 text-stone-600 hover:bg-stone-100 hover:text-stone-900">
+           class="rounded-md p-2 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
             @include('icons.x-mark')
         </a>
     </div>
