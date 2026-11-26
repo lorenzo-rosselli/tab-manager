@@ -160,6 +160,16 @@ try {
     Write-Host 'Installazione di Tab Manager' -ForegroundColor White
     Write-Host "Cartella dell'app: $root"
 
+    # Cartella dentro OneDrive (per esempio la Scrivania sincronizzata): l'installazione prova a
+    # funzionare lo stesso, ma è meglio tenere l'app fuori, dove OneDrive non tocca i suoi file.
+    $oneDrives = @($env:OneDrive, $env:OneDriveConsumer, $env:OneDriveCommercial) | Where-Object { $_ }
+    if ($oneDrives | Where-Object { $root.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) }) {
+        Write-Host ''
+        Write-Host 'Attenzione: la cartella dell''app è dentro OneDrive.' -ForegroundColor Yellow
+        Write-Host 'Se l''installazione dà errori, sposta la cartella fuori da OneDrive (per esempio in C:\TabManager)' -ForegroundColor Yellow
+        Write-Host 'e rilancia "Installa Tab Manager.cmd". I brani non si perdono: sono in Documenti\Tab Manager.' -ForegroundColor Yellow
+    }
+
     # File scaricati da Internet (ZIP non sbloccato): si toglie il segno, così gli script
     # e il collegamento partono senza blocchi. Su file già sbloccati non fa niente.
     Get-ChildItem -Path $root -Recurse -File -ErrorAction SilentlyContinue |
@@ -239,6 +249,19 @@ try {
     Write-Host "Archivio dei brani: $database"
 
     # 5. Librerie
+    # Le cartelle in cui Laravel scrive (bootstrap\cache e storage, con le sottocartelle) non devono
+    # avere l'attributo "sola lettura". Windows e OneDrive lo mettono spesso sulle cartelle che
+    # gestiscono (per esempio la Scrivania sincronizzata), anche se in realtà ci si può scrivere; PHP su
+    # Windows però guarda solo quell'attributo e Laravel si ferma con "The ...\bootstrap\cache directory
+    # must be present and writable". attrib -r toglie solo il segno, non tocca il contenuto dei file.
+    foreach ($folder in @('bootstrap\cache', 'storage')) {
+        $path = Join-Path $root $folder
+        if (Test-Path $path) {
+            $null | & attrib.exe -r $path | Out-Null                            # la cartella stessa
+            $null | & attrib.exe -r (Join-Path $path '*') /s /d | Out-Null      # file e sottocartelle
+        }
+    }
+
     Write-Step 'Scarico le librerie PHP (composer install)...'
     Invoke-Composer @('install', '--no-interaction', '--no-progress')
 
