@@ -314,6 +314,7 @@ Route::get('backup', BackupController::class)->name('backup');
 - I valori iniziali vengono da `old()` se la validazione è fallita, altrimenti dal brano (o, per un brano nuovo, da un foglio vuoto).
 - Gli errori di validazione compaiono sotto ogni campo.
 - I pulsanti Salva e Annulla stanno in alto, accanto al titolo della pagina (`songs/_form-header.blade.php`), non in fondo al form.
+- **Tasto Tab** nel foglio (estensione `TabKey` in `tab-editor.js`): non passa al campo successivo del form ma porta il cursore alla colonna successiva multipla di 4 (`TAB_SIZE`), contando i caratteri dall'inizio della riga (o dall'ultimo a capo). Usa **spazi**, non il carattere di tabulazione: con un font a larghezza fissa gli spazi restano allineati uguali sullo schermo e nel Word, mentre le tabulazioni del Word cadono in altre posizioni. Scrivendo normalmente inserisce gli spazi che servono (con del testo selezionato lo sostituisce); con la sovrascrittura accesa non cambia il testo e sposta solo il cursore a destra, allungando la riga con spazi se finisce prima. Maiuscolo+Tab fa come sempre (va al campo precedente), così con la tastiera si può uscire dal foglio.
 - **Tasto Esc**: chiude la tavolozza aperta e nient'altro. Nel form non fa uscire dalla pagina, così non si perdono le modifiche per sbaglio (nell'anteprima invece Esc torna all'elenco).
 
 ---

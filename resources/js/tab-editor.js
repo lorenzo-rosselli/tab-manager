@@ -30,6 +30,9 @@
 |   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
 |   restano allineate; Backspace rimette un trattino al posto del carattere cancellato.
 |   La scelta resta salvata nel browser (localStorage).
+| - Tasto Tab: nel foglio non passa al campo successivo ma sposta il testo in orizzontale fino alla
+|   colonna successiva multipla di 4, aggiungendo spazi (con la sovrascrittura accesa sposta solo il
+|   cursore). Maiuscolo+Tab fa come sempre: esce dal foglio verso il campo precedente.
 */
 
 import { Editor, Extension, Node } from '@tiptap/core';
@@ -46,6 +49,7 @@ const DEFAULT_FONT = 'Lucida Console';
 const DEFAULT_SIZE = 10;
 const STAFF_DASHES = 68; // trattini di ogni riga della tabulatura vuota ("G|" + 68 = 70 caratteri: ci stanno nella riga)
 const OVERWRITE_KEY = 'tab-manager-overwrite'; // dove il browser ricorda se la sovrascrittura è accesa
+const TAB_SIZE = 4; // il tasto Tab porta alla colonna successiva multipla di 4
 
 // Attributi in più sui paragrafi per riconoscere le righe automatiche.
 // keepOnSplit: false → andando a capo dentro una riga automatica, il nuovo paragrafo è normale.
@@ -234,6 +238,54 @@ const Overwrite = Extension.create({
                 },
             },
         })];
+    },
+});
+
+// Tasto Tab nel foglio. Invece di passare al campo successivo del form, porta il cursore alla
+// "fermata" successiva: la prima colonna multipla di TAB_SIZE (contando i caratteri dall'inizio della
+// riga). Si usano spazi e non il carattere di tabulazione: con un font a larghezza fissa gli spazi
+// restano allineati uguali sullo schermo e nel Word, mentre le tabulazioni del Word cadono altrove.
+// - Scrittura normale: inserisce gli spazi che servono (con del testo selezionato, lo sostituisce).
+// - Sovrascrittura accesa: non cambia il testo, sposta solo il cursore a destra; se la riga finisce
+//   prima, la allunga con spazi.
+const TabKey = Extension.create({
+    name: 'tabKey',
+
+    addKeyboardShortcuts() {
+        return {
+            Tab: () => {
+                const { state, view } = this.editor;
+                const { from, to, empty, $from } = state.selection;
+                const line = $from.parent;
+
+                // Colonna del cursore: caratteri dall'inizio della riga (o dall'ultimo a capo).
+                const before = line.textBetween(0, $from.parentOffset, '\n', '\n');
+                const column = before.length - (before.lastIndexOf('\n') + 1);
+                const spaces = TAB_SIZE - (column % TAB_SIZE);
+
+                let tr;
+
+                if (this.editor.storage.overwrite.enabled && empty) {
+                    // Quanti caratteri ci sono ancora a destra prima della fine della riga.
+                    const after = line.textBetween($from.parentOffset, line.content.size, '\n', '\n');
+                    const end = after.indexOf('\n');
+                    const available = end === -1 ? after.length : end;
+                    const move = Math.min(spaces, available);
+
+                    tr = state.tr;
+                    if (move < spaces) {
+                        tr.insertText(' '.repeat(spaces - move), from + move);
+                    }
+                    tr.setSelection(TextSelection.create(tr.doc, from + spaces));
+                } else {
+                    tr = state.tr.insertText(' '.repeat(spaces), from, to);
+                }
+
+                view.dispatch(tr.scrollIntoView());
+
+                return true; // il browser non sposta il focus su un altro campo
+            },
+        };
     },
 });
 
@@ -506,6 +558,7 @@ if (element) {
             AutoLine,
             PageBreak,
             Overwrite,
+            TabKey,
             Pagination,
         ],
         content: JSON.parse(input.value),
