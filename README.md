@@ -10,12 +10,13 @@ L'app non cerca e non genera le tabulature da sola. È l'utente che le scrive o 
 2. **Prima di estrarre**: tasto destro sullo ZIP → **Proprietà** → spunta **Sblocca** → **OK**.
    Windows segna i file scaricati da Internet e, con Smart App Control attivo, impedirebbe di avviare l'installazione.
 3. Tasto destro sullo ZIP → **Estrai tutto**, nella cartella in cui vuoi tenere l'app.
+   Meglio una cartella **fuori da OneDrive**, per esempio `C:\TabManager`: se la Scrivania o i Documenti sono sincronizzati con OneDrive, evita di estrarla lì.
 4. Nella cartella estratta, doppio clic su **`Installa Tab Manager.cmd`**.
    Una finestra mostra i passi; ci vogliono alcuni minuti. L'installazione:
    - installa **PHP** e **Composer** (con [php.new](https://php.new)) e **Node.js** (con `winget`), se mancano: per Node.js Windows chiede una conferma;
    - scarica le librerie, compila l'interfaccia e prepara il database con tre brani di prova;
    - crea il collegamento **Tab Manager** sul desktop e nella cartella dell'app, e apre l'app.
-5. Da qui in poi si usa solo il collegamento **Tab Manager**: si apre in una finestra dedicata.
+5. Da qui in poi si usa solo il collegamento **Tab Manager**: si apre in una finestra dedicata. Mentre parte compare per qualche secondo la finestrella **"Avvio di Tab Manager…"**: basta un clic, cliccare di nuovo non serve.
 
 ## I tuoi brani: dove sono e come non perderli
 
@@ -65,5 +66,6 @@ PHP, Composer e Node.js restano installati, perché possono servire ad altri pro
 ## Se qualcosa non va
 
 - **Non si apre niente cliccando `Installa Tab Manager.cmd`, oppure Windows dice che è stato bloccato**: lo ZIP non era stato sbloccato. Cancella la cartella estratta e ripeti dal punto 2.
+- **L'installazione si ferma con "...bootstrap\cache directory must be present and writable"**: succede soprattutto se la cartella dell'app è dentro OneDrive (per esempio sulla Scrivania sincronizzata). Sposta la cartella fuori da OneDrive, per esempio in `C:\TabManager`, e rilancia `Installa Tab Manager.cmd`. I brani non si perdono: sono in `Documenti\Tab Manager`.
 - **L'installazione si ferma con un errore**: la finestra resta aperta con il messaggio. Fai una foto e mandala a chi ti ha dato l'app.
 - **Il collegamento non apre la finestra**: rilancia `Installa Tab Manager.cmd`.

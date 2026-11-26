@@ -2,7 +2,9 @@
 |--------------------------------------------------------------------------
 | Tab Manager – installazione e aggiornamento (lo avvia "Installa Tab Manager.cmd")
 |--------------------------------------------------------------------------
-| Prepara tutto ciò che serve per usare l'app su questo computer:
+| Prepara tutto ciò che serve per usare l'app su questo computer. Per prima cosa svuota
+| storage\framework\views (le pagine compilate da Laravel), così dopo un aggiornamento si vedono
+| subito quelle nuove. Poi:
 |  1. PHP e Composer. Se nel computer c'è WSL (Ubuntu) con PHP 8.4 o più recente e Composer, usa
 |     quelli: Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi
 |     funzionano anche quando Windows blocca il php.exe (l'app poi usa lo stesso PHP, vedi
@@ -158,11 +160,33 @@ try {
     Write-Host 'Installazione di Tab Manager' -ForegroundColor White
     Write-Host "Cartella dell'app: $root"
 
+    # Cartella dentro OneDrive (per esempio la Scrivania sincronizzata): l'installazione prova a
+    # funzionare lo stesso, ma è meglio tenere l'app fuori, dove OneDrive non tocca i suoi file.
+    $oneDrives = @($env:OneDrive, $env:OneDriveConsumer, $env:OneDriveCommercial) | Where-Object { $_ }
+    if ($oneDrives | Where-Object { $root.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) }) {
+        Write-Host ''
+        Write-Host 'Attenzione: la cartella dell''app è dentro OneDrive.' -ForegroundColor Yellow
+        Write-Host 'Se l''installazione dà errori, sposta la cartella fuori da OneDrive (per esempio in C:\TabManager)' -ForegroundColor Yellow
+        Write-Host 'e rilancia "Installa Tab Manager.cmd". I brani non si perdono: sono in Documenti\Tab Manager.' -ForegroundColor Yellow
+    }
+
     # File scaricati da Internet (ZIP non sbloccato): si toglie il segno, così gli script
     # e il collegamento partono senza blocchi. Su file già sbloccati non fa niente.
     Get-ChildItem -Path $root -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '\\(node_modules|vendor)\\' } |
         Unblock-File -ErrorAction SilentlyContinue
+
+    # Pagine già compilate da Laravel (storage\framework\views): si cancellano a ogni installazione
+    # e aggiornamento, tranne .gitignore. Laravel ricompila una vista Blade solo se il file della vista
+    # è più recente di quello compilato, ma i file estratti da uno ZIP di GitHub hanno la data del
+    # commit, che può essere più vecchia: senza questa pulizia l'app continuerebbe a mostrare le
+    # pagine della versione precedente. Alla prima apertura Laravel le ricompila da sole.
+    $compiledViews = Join-Path $root 'storage\framework\views'
+    if (Test-Path $compiledViews) {
+        Get-ChildItem -LiteralPath $compiledViews -File -Force |
+            Where-Object { $_.Name -ne '.gitignore' } |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
 
     Update-Path
 
@@ -225,6 +249,19 @@ try {
     Write-Host "Archivio dei brani: $database"
 
     # 5. Librerie
+    # Le cartelle in cui Laravel scrive (bootstrap\cache e storage, con le sottocartelle) non devono
+    # avere l'attributo "sola lettura". Windows e OneDrive lo mettono spesso sulle cartelle che
+    # gestiscono (per esempio la Scrivania sincronizzata), anche se in realtà ci si può scrivere; PHP su
+    # Windows però guarda solo quell'attributo e Laravel si ferma con "The ...\bootstrap\cache directory
+    # must be present and writable". attrib -r toglie solo il segno, non tocca il contenuto dei file.
+    foreach ($folder in @('bootstrap\cache', 'storage')) {
+        $path = Join-Path $root $folder
+        if (Test-Path $path) {
+            $null | & attrib.exe -r $path | Out-Null                            # la cartella stessa
+            $null | & attrib.exe -r (Join-Path $path '*') /s /d | Out-Null      # file e sottocartelle
+        }
+    }
+
     Write-Step 'Scarico le librerie PHP (composer install)...'
     Invoke-Composer @('install', '--no-interaction', '--no-progress')
 

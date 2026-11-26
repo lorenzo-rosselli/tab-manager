@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Brani')
-
 @section('content')
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Brani</h1>

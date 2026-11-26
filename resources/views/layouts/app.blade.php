@@ -12,7 +12,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Brani') – {{ config('app.name') }}</title>
+    {{-- Titolo della finestra: sempre "Tab-Manager v.1.0.1", in tutte le pagine (App\Services\AppVersion). --}}
+    <title>{{ $windowTitle }}</title>
     {{-- Icona dell'app (scheda del browser, finestra dedicata e barra delle applicazioni) --}}
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="16x16 24x24 32x32 48x48 64x64 128x128 256x256">
