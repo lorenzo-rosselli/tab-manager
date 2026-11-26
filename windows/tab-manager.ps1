@@ -17,6 +17,10 @@
 | Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi così
 | l'app si apre anche se Windows blocca il php.exe. Senza WSL usa il PHP di php.new.
 |
+| Un solo avvio alla volta: un "lucchetto" di Windows (mutex) fa sì che cliccare più volte il
+| collegamento mentre l'app si sta avviando non apra altre finestre. Mentre si avvia compare subito
+| una piccola finestra "Avvio di Tab Manager…", che si chiude quando si apre l'app.
+|
 | Le pagine usano i file compilati con "npm run build" (cartella public\build): dopo ogni modifica
 | al codice va rifatto "npm run build". Se invece "npm run dev" è acceso, usa quello.
 | Gli errori compaiono in una finestra di messaggio (lo script gira senza console).
@@ -38,6 +42,13 @@ $versionFile = Join-Path $PSScriptRoot 'version.txt'   # la Release installata (
 $server = $null
 $useWsl = $false
 $wslDatabase = $null
+$splash = $null
+$locked = $false
+
+# "Lucchetto" con nome: lo tiene chi sta avviando l'app (o aggiornandola, vedi update.ps1). Un secondo
+# clic sul collegamento lo trova occupato e non fa niente. Si libera appena la finestra dell'app è
+# aperta: da lì un altro clic apre un'altra finestra, come sempre.
+$lock = New-Object System.Threading.Mutex($false, 'Local\TabManager-Avvio')
 
 Add-Type -AssemblyName PresentationFramework
 
@@ -114,6 +125,89 @@ function Join-Args([string[]] $list) {
     return ($list | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' '
 }
 
+# Prende il lucchetto senza aspettare: vero se ci si riesce. Se chi lo teneva si è chiuso senza
+# liberarlo, Windows lo segnala con un'eccezione ma il lucchetto passa comunque a noi.
+function Enter-Lock {
+    try {
+        $script:locked = $lock.WaitOne(0)
+    } catch [System.Threading.AbandonedMutexException] {
+        $script:locked = $true
+    }
+
+    return $script:locked
+}
+
+function Exit-Lock {
+    if ($script:locked) {
+        try {
+            $lock.ReleaseMutex()
+        } catch {
+        }
+        $script:locked = $false
+    }
+}
+
+# Finestrella "Avvio di Tab Manager…" (WPF, la grafica di Windows), mostrata subito mentre lo script
+# controlla gli aggiornamenti e avvia il server, così si vede che l'app sta partendo. Gira in un
+# thread a parte (runspace), altrimenti mentre lo script aspetta resterebbe bloccata ("Non risponde").
+# Si chiude quando Stop-Splash alza il segnale Close; da sola dopo 2 minuti, per sicurezza.
+function Start-Splash {
+    try {
+        $state = [hashtable]::Synchronized(@{ Close = $false; Icon = Join-Path $PSScriptRoot 'tab-manager.ico' })
+        $runspace = [runspacefactory]::CreateRunspace()
+        $runspace.ApartmentState = 'STA'   # le finestre WPF lo richiedono
+        $runspace.Open()
+        $runspace.SessionStateProxy.SetVariable('state', $state)
+
+        $shell = [powershell]::Create()
+        $shell.Runspace = $runspace
+        [void] $shell.AddScript({
+            Add-Type -AssemblyName PresentationFramework
+            [xml] $xaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Title="Tab Manager" Width="380" Height="130" WindowStyle="None" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Topmost="True" AllowsTransparency="True" Background="Transparent">
+    <Border Background="#111827" BorderBrush="#374151" BorderThickness="1" CornerRadius="10" Padding="28,22">
+        <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Avvio di Tab Manager…" Foreground="White" FontFamily="Segoe UI" FontSize="18" HorizontalAlignment="Center"/>
+            <ProgressBar IsIndeterminate="True" Height="4" Margin="0,18,0,0" Foreground="#F59E0B" Background="#374151" BorderThickness="0"/>
+        </StackPanel>
+    </Border>
+</Window>
+'@
+            # Tutto ciò che serve al timer sta in $state (variabile condivisa), non in variabili locali.
+            $state.Window = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
+            $state.Started = Get-Date
+            try {
+                $state.Window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create([Uri] $state.Icon)
+            } catch {
+            }
+            $state.Timer = New-Object System.Windows.Threading.DispatcherTimer
+            $state.Timer.Interval = [TimeSpan]::FromMilliseconds(200)
+            $state.Timer.Add_Tick({
+                if ($state.Close -or ((Get-Date) - $state.Started).TotalMinutes -ge 2) {
+                    $state.Timer.Stop()
+                    $state.Window.Close()
+                }
+            })
+            $state.Timer.Start()
+            [void] $state.Window.ShowDialog()
+        })
+        [void] $shell.BeginInvoke()
+
+        return $state
+    } catch {
+        return $null   # senza finestrella l'app parte lo stesso
+    }
+}
+
+function Stop-Splash {
+    if ($script:splash) {
+        $script:splash.Close = $true
+        $script:splash = $null
+    }
+}
+
 function Stop-Server {
     if (-not $server) {
         return
@@ -145,15 +239,28 @@ $phpOptions = @(
     '-d', 'realpath_cache_ttl=3600'
 )
 
+# Un solo avvio alla volta: se il lucchetto è già preso (l'app si sta avviando o aggiornando),
+# questo clic non fa niente.
+if (-not (Enter-Lock)) {
+    exit 0
+}
+
 try {
+    # Se l'app non è già aperta, la finestrella "Avvio di Tab Manager…" compare subito.
+    if (-not (Test-Port '127.0.0.1' $port)) {
+        $splash = Start-Splash
+    }
+
     # Aggiornamento: non sul computer di sviluppo (cartella con .git: lì si usa git) e non se l'app
     # è già aperta (server acceso). Se c'è una Release nuova, la finestra di aggiornamento fa il resto.
     if (-not $SkipUpdate -and -not (Test-Path (Join-Path $root '.git')) -and -not (Test-Port '127.0.0.1' $port)) {
         $latest = Get-LatestRelease
         $installed = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { '' }
         if ($latest -and $latest -ne $installed) {
+            Stop-Splash
             Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList `
                 "-NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $PSScriptRoot 'update.ps1')`" -Tag `"$latest`""
+            Exit-Lock   # update.ps1 lo prende e lo tiene finché l'aggiornamento non è finito
             exit 0
         }
     }
@@ -231,6 +338,12 @@ try {
         '--no-default-browser-check'
     )
 
+    # Edge impiega un attimo a mostrare la finestra: la finestrella resta ancora un paio di secondi.
+    # Poi l'avvio è finito: si libera il lucchetto (un altro clic aprirà un'altra finestra).
+    Start-Sleep -Seconds 2
+    Stop-Splash
+    Exit-Lock
+
     # Copia di sicurezza del giorno (solo se oggi non c'è già), in background dopo aver aperto la
     # finestra, così l'app compare subito. Un errore qui non blocca l'app.
     try {
@@ -254,6 +367,9 @@ try {
         Stop-Server
     }
 } catch {
+    Stop-Splash
     Stop-Server
     Show-Error $_.Exception.Message
+} finally {
+    Exit-Lock
 }

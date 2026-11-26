@@ -83,6 +83,28 @@ function Start-App {
         -ArgumentList "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$script`" -SkipUpdate"
 }
 
+# Lucchetto di avvio (lo stesso di tab-manager.ps1): mentre l'aggiornamento è in corso, cliccare il
+# collegamento non fa niente. tab-manager.ps1 lo libera subito dopo aver aperto questa finestra.
+$lock = New-Object System.Threading.Mutex($false, 'Local\TabManager-Avvio')
+try {
+    $locked = $lock.WaitOne(15000)
+} catch [System.Threading.AbandonedMutexException] {
+    $locked = $true   # chi lo teneva si è chiuso senza liberarlo: ora è nostro
+}
+if (-not $locked) {
+    exit 0   # c'è già un altro aggiornamento in corso
+}
+
+function Exit-Lock {
+    if ($script:locked) {
+        try {
+            $lock.ReleaseMutex()
+        } catch {
+        }
+        $script:locked = $false
+    }
+}
+
 $localDirs = @('.git', 'vendor', 'node_modules', 'storage', 'public\build', 'bootstrap\cache')
 $localFiles = @('.env', 'Tab Manager.lnk', 'hot', 'version.txt', 'database.sqlite*')
 $saved = $false
@@ -149,6 +171,7 @@ try {
     Write-Host ''
     Write-Host "Tab Manager è aggiornato alla versione $Tag. Lo apro..." -ForegroundColor Green
     Start-Sleep -Seconds 2
+    Exit-Lock   # tab-manager.ps1 deve poterlo prendere
     Start-App
     exit 0
 } catch {
@@ -167,6 +190,7 @@ try {
     Write-Host 'Al prossimo avvio l''aggiornamento verrà riprovato.'
     Write-Host ''
     Read-Host 'Premi Invio per aprire Tab Manager' | Out-Null
+    Exit-Lock   # tab-manager.ps1 deve poterlo prendere
     Start-App
     exit 1
 }

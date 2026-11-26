@@ -16,7 +16,7 @@ L'app non cerca e non genera le tabulature da sola. È l'utente che le scrive o 
    - installa **PHP** e **Composer** (con [php.new](https://php.new)) e **Node.js** (con `winget`), se mancano: per Node.js Windows chiede una conferma;
    - scarica le librerie, compila l'interfaccia e prepara il database con tre brani di prova;
    - crea il collegamento **Tab Manager** sul desktop e nella cartella dell'app, e apre l'app.
-5. Da qui in poi si usa solo il collegamento **Tab Manager**: si apre in una finestra dedicata.
+5. Da qui in poi si usa solo il collegamento **Tab Manager**: si apre in una finestra dedicata. Mentre parte compare per qualche secondo la finestrella **"Avvio di Tab Manager…"**: basta un clic, cliccare di nuovo non serve.
 
 ## I tuoi brani: dove sono e come non perderli
 
