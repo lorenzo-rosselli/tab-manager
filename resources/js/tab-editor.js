@@ -28,13 +28,20 @@
 |   in fondo al foglio una riga per corda, per esempio "G|" seguito da 68 trattini.
 | - Sovrascrittura (pulsante "INS" nella barra o tasto Ins, come in Word): scrivendo, ogni carattere
 |   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
-|   restano allineate; Backspace rimette un trattino al posto del carattere cancellato.
+|   restano allineate; Backspace rimette un trattino al posto del carattere cancellato e la barra
+|   spaziatrice scrive un trattino invece dello spazio.
 |   La scelta resta salvata nel browser (localStorage).
+| - Righe vuote: hanno anche loro un font e una dimensione (come il segno di paragrafo di Word), così
+|   cambiando la dimensione di più righe cambia anche l'altezza di quelle vuote (estensione EmptyLineFont).
+| - Tasto Tab: nel foglio non passa al campo successivo ma sposta il testo in orizzontale fino alla
+|   colonna successiva multipla di 4, aggiungendo spazi (con la sovrascrittura accesa sposta solo il
+|   cursore). Maiuscolo+Tab fa come sempre: esce dal foglio verso il campo precedente.
 */
 
 import { Editor, Extension, Node } from '@tiptap/core';
 import { Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state';
+import { Mapping } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -43,9 +50,10 @@ import Highlight from '@tiptap/extension-highlight';
 import { MARGIN, drawPages, paginate, paperHeight, spacer } from './tab-pages.js';
 
 const DEFAULT_FONT = 'Lucida Console';
-const DEFAULT_SIZE = 10;
-const STAFF_DASHES = 68; // trattini di ogni riga della tabulatura vuota ("G|" + 68 = 70 caratteri: ci stanno nella riga)
+const DEFAULT_SIZE = 12;
+const STAFF_DASHES = 38; // trattini di ogni riga della tabulatura vuota ("G|" + 38 = 40 caratteri)
 const OVERWRITE_KEY = 'tab-manager-overwrite'; // dove il browser ricorda se la sovrascrittura è accesa
+const TAB_SIZE = 4; // il tasto Tab porta alla colonna successiva multipla di 4
 
 // Attributi in più sui paragrafi per riconoscere le righe automatiche.
 // keepOnSplit: false → andando a capo dentro una riga automatica, il nuovo paragrafo è normale.
@@ -70,6 +78,158 @@ const AutoLine = Extension.create({
                 },
             },
         }];
+    },
+});
+
+/* ---------------- Font e dimensione delle righe vuote ---------------- */
+
+// Una riga vuota non ha testo, quindi non ha segni di font o di dimensione: senza questa estensione
+// sarebbe sempre alta come il testo predefinito (Lucida Console 12 pt), anche in mezzo a righe a 14 pt.
+// Come il segno di paragrafo di Word, ogni paragrafo può avere un suo font e una sua dimensione
+// (attributi fontFamily e fontSize del paragrafo), che contano solo quando il paragrafo è vuoto:
+// app.css li applica alle righe vuote, l'anteprima e il Word li leggono dal server (TabDocument).
+// Il formato di una riga vuota si decide così:
+// 1. scegliendo font o dimensione dalla barra con una selezione: anche le righe vuote selezionate
+//    (comando setEmptyLinesFormat, usato dalla barra insieme a setFontFamily e setFontSize);
+// 2. con il cursore nella riga vuota: i segni "in attesa" (font o dimensione scelti dalla barra lì,
+//    oppure portati da Invio dalla riga di sopra) o, se la riga è appena stata svuotata, il formato
+//    del testo che aveva;
+// 3. scrivendo in una riga vuota, il testo prende il suo formato.
+const LINE_SIZE = /^\d{1,2}pt$/;          // es. "12pt"
+const LINE_FONT = /^[A-Za-z][A-Za-z ]*$/;  // es. "Courier New"
+
+// Solo font e dimensione, e solo se hanno un valore: null se non c'è niente.
+function lineFormat(attrs) {
+    const format = {};
+
+    if (LINE_SIZE.test(attrs?.fontSize ?? '')) format.fontSize = attrs.fontSize;
+    if (LINE_FONT.test(attrs?.fontFamily ?? '')) format.fontFamily = attrs.fontFamily;
+
+    return Object.keys(format).length ? format : null;
+}
+
+const isEmptyLine = (node) => node?.type.name === 'paragraph' && node.content.size === 0;
+
+const EmptyLineFont = Extension.create({
+    name: 'emptyLineFont',
+
+    addGlobalAttributes() {
+        return [{
+            types: ['paragraph'],
+            attributes: {
+                // keepOnSplit: false → con Invio la riga nuova prende il formato dai segni (regola 2).
+                fontSize: {
+                    default: null,
+                    keepOnSplit: false,
+                    parseHTML: (element) => (LINE_SIZE.test(element.dataset.lineSize ?? '') ? element.dataset.lineSize : null),
+                    renderHTML: (attributes) => (LINE_SIZE.test(attributes.fontSize ?? '')
+                        ? { 'data-line-size': attributes.fontSize, style: `--line-size: ${attributes.fontSize}` }
+                        : {}),
+                },
+                fontFamily: {
+                    default: null,
+                    keepOnSplit: false,
+                    parseHTML: (element) => (LINE_FONT.test(element.dataset.lineFont ?? '') ? element.dataset.lineFont : null),
+                    renderHTML: (attributes) => (LINE_FONT.test(attributes.fontFamily ?? '')
+                        ? { 'data-line-font': attributes.fontFamily, style: `--line-font: '${attributes.fontFamily}'` }
+                        : {}),
+                },
+            },
+        }];
+    },
+
+    addCommands() {
+        return {
+            // 1. Righe vuote nella selezione: prendono il font e/o la dimensione scelti dalla barra.
+            setEmptyLinesFormat: (format) => ({ tr, dispatch }) => {
+                if (dispatch) {
+                    tr.selection.ranges.forEach(({ $from, $to }) => {
+                        tr.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+                            if (isEmptyLine(node)) {
+                                tr.setNodeMarkup(pos, null, { ...node.attrs, ...format });
+                            }
+                        });
+                    });
+                }
+
+                return true;
+            },
+        };
+    },
+
+    addProseMirrorPlugins() {
+        return [new Plugin({
+            key: new PluginKey('emptyLineFont'),
+
+            appendTransaction(transactions, oldState, newState) {
+                const docChanged = transactions.some((transaction) => transaction.docChanged);
+                const marksChanged = transactions.some((transaction) => transaction.storedMarksSet);
+                const tr = newState.tr;
+                // Segni "in attesa" (font, grassetto... per il prossimo testo scritto). Un passo che
+                // cambia il documento li cancella: se ne aggiungiamo uno, vanno rimessi (regola 3).
+                const pending = newState.storedMarks;
+
+                // Cambia font e/o dimensione di una riga vuota, se è diverso.
+                const setFormat = (pos, format, replace = false) => {
+                    const node = tr.doc.nodeAt(pos);
+                    const attrs = replace
+                        ? { ...node.attrs, fontSize: format?.fontSize ?? null, fontFamily: format?.fontFamily ?? null }
+                        : { ...node.attrs, ...format };
+
+                    if (attrs.fontSize !== node.attrs.fontSize || attrs.fontFamily !== node.attrs.fontFamily) {
+                        tr.setNodeMarkup(pos, null, attrs);
+                    }
+                };
+
+                // 2. Riga vuota con il cursore.
+                const $cursor = tr.selection.$from;
+                if (tr.selection.empty && isEmptyLine($cursor.parent) && (docChanged || marksChanged)) {
+                    const pos = $cursor.before();
+                    const stored = pending?.find((mark) => mark.type.name === 'textStyle');
+                    const format = lineFormat(stored?.attrs);
+
+                    if (format) {
+                        setFormat(pos, format);
+                    } else if (docChanged) {
+                        // Appena svuotata? Allora prende il formato dell'ultimo pezzo di testo che aveva.
+                        const mapping = new Mapping();
+                        transactions.forEach((transaction) => mapping.appendMapping(transaction.mapping));
+                        const old = oldState.doc.nodeAt(mapping.invert().map(pos));
+
+                        if (old?.type.name === 'paragraph' && old.content.size > 0) {
+                            let last = null;
+                            old.forEach((child) => {
+                                if (child.isText) last = child;
+                            });
+                            const style = last?.marks.find((mark) => mark.type.name === 'textStyle');
+                            setFormat(pos, lineFormat(style?.attrs), true);
+                        }
+                    }
+                }
+
+                // 3. Cursore in una riga vuota con un formato: il testo che si scrive lo prende
+                //    (segni "in attesa", come quando si sceglie la dimensione dalla barra).
+                const line = tr.selection.empty ? tr.doc.resolve(tr.selection.from).parent : null;
+                const format = isEmptyLine(line) ? lineFormat(line.attrs) : null;
+
+                if (format) {
+                    const stored = pending ?? [];
+                    const current = stored.find((mark) => mark.type.name === 'textStyle');
+                    const attrs = { ...(current?.attrs ?? {}), ...format };
+
+                    if (tr.docChanged || current?.attrs.fontSize !== attrs.fontSize || current?.attrs.fontFamily !== attrs.fontFamily) {
+                        tr.setStoredMarks([
+                            ...stored.filter((mark) => mark.type.name !== 'textStyle'),
+                            newState.schema.marks.textStyle.create(attrs),
+                        ]);
+                    }
+                } else if (tr.docChanged && pending) {
+                    tr.setStoredMarks(pending);
+                }
+
+                return tr.docChanged || tr.storedMarksSet ? tr : null;
+            },
+        })];
     },
 });
 
@@ -134,6 +294,8 @@ const PageBreak = Node.create({
 // in fondo alla riga, o con del testo selezionato, si scrive come sempre.
 // Backspace, con la modalità accesa, non accorcia la riga: il carattere prima del cursore diventa "-"
 // e il cursore torna indietro di uno (all'inizio del paragrafo o con una selezione fa come sempre).
+// La barra spaziatrice, con la modalità accesa e senza selezione, scrive un "-" invece dello spazio
+// (sostituisce il carattere a destra, o lo aggiunge in fondo alla riga) e il cursore va avanti di uno.
 const Overwrite = Extension.create({
     name: 'overwrite',
 
@@ -219,9 +381,21 @@ const Overwrite = Extension.create({
                         return false; // scrittura normale
                     }
 
+                    // La barra spaziatrice scrive un trattino: si va avanti lungo la riga della
+                    // tabulatura senza lasciare buchi (come Backspace, che rimette un "-").
+                    if (text === ' ') {
+                        text = '-';
+                    }
+
                     const after = view.state.doc.resolve(from).nodeAfter; // cosa c'è a destra del cursore
                     if (!after?.isText) {
-                        return false; // fine del paragrafo (o un a capo): si aggiunge come sempre
+                        if (text !== '-') {
+                            return false; // fine del paragrafo (o un a capo): si aggiunge come sempre
+                        }
+                        // Spazio in fondo alla riga: si aggiunge il trattino al posto dello spazio.
+                        view.dispatch(view.state.tr.insertText('-', from).scrollIntoView());
+
+                        return true;
                     }
 
                     const length = Math.min(text.length, after.text.length);
@@ -234,6 +408,54 @@ const Overwrite = Extension.create({
                 },
             },
         })];
+    },
+});
+
+// Tasto Tab nel foglio. Invece di passare al campo successivo del form, porta il cursore alla
+// "fermata" successiva: la prima colonna multipla di TAB_SIZE (contando i caratteri dall'inizio della
+// riga). Si usano spazi e non il carattere di tabulazione: con un font a larghezza fissa gli spazi
+// restano allineati uguali sullo schermo e nel Word, mentre le tabulazioni del Word cadono altrove.
+// - Scrittura normale: inserisce gli spazi che servono (con del testo selezionato, lo sostituisce).
+// - Sovrascrittura accesa: non cambia il testo, sposta solo il cursore a destra; se la riga finisce
+//   prima, la allunga con spazi.
+const TabKey = Extension.create({
+    name: 'tabKey',
+
+    addKeyboardShortcuts() {
+        return {
+            Tab: () => {
+                const { state, view } = this.editor;
+                const { from, to, empty, $from } = state.selection;
+                const line = $from.parent;
+
+                // Colonna del cursore: caratteri dall'inizio della riga (o dall'ultimo a capo).
+                const before = line.textBetween(0, $from.parentOffset, '\n', '\n');
+                const column = before.length - (before.lastIndexOf('\n') + 1);
+                const spaces = TAB_SIZE - (column % TAB_SIZE);
+
+                let tr;
+
+                if (this.editor.storage.overwrite.enabled && empty) {
+                    // Quanti caratteri ci sono ancora a destra prima della fine della riga.
+                    const after = line.textBetween($from.parentOffset, line.content.size, '\n', '\n');
+                    const end = after.indexOf('\n');
+                    const available = end === -1 ? after.length : end;
+                    const move = Math.min(spaces, available);
+
+                    tr = state.tr;
+                    if (move < spaces) {
+                        tr.insertText(' '.repeat(spaces - move), from + move);
+                    }
+                    tr.setSelection(TextSelection.create(tr.doc, from + spaces));
+                } else {
+                    tr = state.tr.insertText(' '.repeat(spaces), from, to);
+                }
+
+                view.dispatch(tr.scrollIntoView());
+
+                return true; // il browser non sposta il focus su un altro campo
+            },
+        };
     },
 });
 
@@ -506,6 +728,8 @@ if (element) {
             AutoLine,
             PageBreak,
             Overwrite,
+            TabKey,
+            EmptyLineFont,
             Pagination,
         ],
         content: JSON.parse(input.value),
@@ -540,8 +764,15 @@ if (element) {
     const fontSelect = document.getElementById('tab-font');
     const sizeSelect = document.getElementById('tab-size');
 
-    fontSelect.addEventListener('change', () => editor.chain().focus().setFontFamily(fontSelect.value).run());
-    sizeSelect.addEventListener('change', () => editor.chain().focus().setFontSize(`${sizeSelect.value}pt`).run());
+    // Il font e la dimensione valgono anche per le righe vuote selezionate (vedi EmptyLineFont).
+    fontSelect.addEventListener('change', () => editor.chain().focus()
+        .setFontFamily(fontSelect.value)
+        .setEmptyLinesFormat({ fontFamily: fontSelect.value })
+        .run());
+    sizeSelect.addEventListener('change', () => editor.chain().focus()
+        .setFontSize(`${sizeSelect.value}pt`)
+        .setEmptyLinesFormat({ fontSize: `${sizeSelect.value}pt` })
+        .run());
 
     // Tavolozze di colore ed evidenziatore: menu a tendina <details>; scelto il colore, il menu si chiude.
     // data-value vuoto = "Automatico" (testo nero) / "Nessuno" (niente evidenziatore).
@@ -660,7 +891,7 @@ if (element) {
     }
 
     // Aggiunge in fondo al foglio una tabulatura vuota: un paragrafo per corda, dalla più acuta
-    // ("G|-----…" per il basso a 4 corde), senza formattazione (Lucida Console 10 pt, a sinistra).
+    // ("G|-----…" per il basso a 4 corde), in Lucida Console, a sinistra, con la dimensione scelta nella barra.
     // Tra il testo sopra e la tabulatura resta una riga vuota: se il foglio finisce già con una riga
     // vuota si usa quella. In cima al foglio o a una pagina nuova la tabulatura parte dalla prima riga.
     function insertStaff() {
@@ -671,8 +902,14 @@ if (element) {
         }
 
         const { schema, doc, tr } = editor.state;
+        // Le righe prendono la dimensione scelta in quel momento nella barra (quella del punto in cui
+        // si trova il cursore); con la dimensione predefinita restano senza formattazione propria.
+        const size = `${sizeSelect.value}pt`;
+        const custom = Number(sizeSelect.value) !== DEFAULT_SIZE;
+        const marks = custom ? [schema.marks.textStyle.create({ fontSize: size })] : [];
+        const attrs = custom ? { fontSize: size } : null; // anche la riga vuota di distacco (EmptyLineFont)
         const lines = tuning.split(' ').map((name) => (
-            schema.nodes.paragraph.create(null, schema.text(`${name}|${'-'.repeat(STAFF_DASHES)}`))
+            schema.nodes.paragraph.create(attrs, schema.text(`${name}|${'-'.repeat(STAFF_DASHES)}`, marks))
         ));
         const end = doc.content.size;
         const last = doc.lastChild;
@@ -684,7 +921,7 @@ if (element) {
         } else if (lastEmpty || last.type.name === 'pageBreak') {
             tr.insert(end, lines);                                    // c'è già la riga vuota di distacco
         } else {
-            tr.insert(end, [schema.nodes.paragraph.create(), ...lines]);
+            tr.insert(end, [schema.nodes.paragraph.create(attrs), ...lines]);
         }
 
         tr.setSelection(Selection.atEnd(tr.doc)); // cursore in fondo all'ultima riga inserita
@@ -735,7 +972,7 @@ if (element) {
         const header = kind === 'header';
         const marks = [
             header ? schema.marks.bold.create() : schema.marks.italic.create(),
-            schema.marks.textStyle.create({ fontSize: header ? '14pt' : '8pt' }),
+            schema.marks.textStyle.create({ fontSize: header ? '16pt' : '8pt' }),
         ];
 
         return schema.nodes.paragraph.create(

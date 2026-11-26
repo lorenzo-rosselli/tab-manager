@@ -17,11 +17,11 @@ class SongController extends Controller
      * Colonne ordinabili dell'elenco: chiave usata nell'indirizzo => [colonna del database, etichetta].
      */
     private const SORTABLE = [
-        'artist' => ['artist', 'Artista'],
+        'artist' => ['artist', 'Artista originale'],
         'title' => ['title', 'Titolo'],
-        'band' => ['band', 'Gruppo'],
+        'band' => ['band', 'Il mio gruppo'],
         'instrument' => ['instrument', 'Strumento'],
-        'date' => ['created_at', 'Data'],
+        'date' => ['updated_at', 'Data ultimo aggiornamento'],
     ];
 
     /**
@@ -29,7 +29,8 @@ class SongController extends Controller
      * - ?q=testo     mostra solo i brani con il testo nel titolo, nell'artista, nel gruppo
      *                o nel nome dello strumento (es. "basso");
      * - ?sort=a,-b   ordina per a (crescente) e poi per b (decrescente, segno "-"),
-     *                nell'ordine in cui le colonne sono state scelte. Senza sort: dal più recente.
+     *                nell'ordine in cui le colonne sono state scelte. Senza sort: dal brano
+     *                aggiornato più di recente (ordine predefinito, non mostrato tra gli ordinamenti).
      */
     public function index(Request $request): View
     {
@@ -59,7 +60,7 @@ class SongController extends Controller
         }
 
         if ($sorts === []) {
-            $query->latest();
+            $query->latest('updated_at');
         }
 
         return view('songs.index', [

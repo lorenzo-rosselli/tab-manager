@@ -12,9 +12,9 @@
             @if ($sortParam !== '')
                 <input type="hidden" name="sort" value="{{ $sortParam }}">
             @endif
-            <input type="search" name="q" value="{{ $search }}" placeholder="Cerca artista, titolo, gruppo o strumento"
-                   aria-label="Cerca artista, titolo, gruppo o strumento"
-                   class="w-64 rounded-md border border-gray-300 bg-white dark:border-gray-600 px-3 py-2 text-sm text-gray-900 scheme-light">
+            <input type="search" name="q" value="{{ $search }}" placeholder="Cerca per artista, titolo, gruppo o strumento"
+                   aria-label="Cerca per artista originale, titolo, il mio gruppo o strumento"
+                   class="w-128 rounded-md border border-gray-300 bg-white dark:border-gray-600 px-3 py-2 text-sm text-gray-900 scheme-light">
             <button type="submit" title="Cerca" aria-label="Cerca"
                     class="cursor-pointer rounded-md p-2 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
                 @include('icons.magnifying-glass')
@@ -107,7 +107,7 @@
                             </td>
                             <td class="px-4 py-3">{{ $song->band ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $song->instrument->label() }}</td>
-                            <td class="px-4 py-3">{{ $song->created_at->format('d/m/Y') }}</td>
+                            <td class="px-4 py-3">{{ $song->updated_at->format('d/m/Y') }}</td>
                             <td class="relative z-10 px-4 py-3">
                                 {{-- Icone: title = tooltip del browser, aria-label = testo per i lettori di schermo --}}
                                 <div class="flex items-center justify-end gap-1">

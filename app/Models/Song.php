@@ -18,7 +18,7 @@ class Song extends Model
     /**
      * Dimensioni selezionabili (in punti).
      */
-    public const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18];
+    public const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20];
 
     /**
      * Allineamenti dei paragrafi: valore => nome mostrato.
@@ -60,7 +60,7 @@ class Song extends Model
      */
     public const DEFAULT_FONT = 'Lucida Console';
 
-    public const DEFAULT_FONT_SIZE = 10;
+    public const DEFAULT_FONT_SIZE = 12;
 
     /**
      * Valori iniziali di un brano nuovo (gli stessi default della migration).

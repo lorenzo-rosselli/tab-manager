@@ -25,8 +25,8 @@ return [
     // Nomi dei campi come li vede l'utente.
     'attributes' => [
         'title' => 'titolo',
-        'artist' => 'artista',
-        'band' => 'gruppo',
+        'artist' => 'artista originale',
+        'band' => 'il mio gruppo',
         'instrument' => 'strumento',
         'strings' => 'numero di corde',
         'show_instrument' => 'mostra strumento',

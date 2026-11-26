@@ -13,13 +13,13 @@
 
 /*
 | Foglio della tabulatura (editor nel form e anteprima): come un documento Word.
-| Il testo senza formattazione propria usa Lucida Console 10 pt; i paragrafi non hanno spazi
+| Il testo senza formattazione propria usa Lucida Console 12 pt; i paragrafi non hanno spazi
 | tra loro e un paragrafo vuoto resta una riga vuota. Interlinea "normal": quella del font,
 | come l'interlinea singola del Word.
 */
 .tab-sheet {
     font-family: 'Lucida Console', monospace;
-    font-size: 10pt;
+    font-size: 12pt;
     line-height: normal;
     color: #111827;
     white-space: pre-wrap;
@@ -100,6 +100,20 @@
     pointer-events: none;
 }
 
+/*
+| Righe vuote nell'editor: font e dimensione propri (attributi del paragrafo, vedi EmptyLineFont in
+| tab-editor.js), così una riga vuota tra righe a 12 pt è alta come loro. Valgono solo finché la riga
+| è vuota (ProseMirror la disegna come un <p> con un solo <br>): con del testo conta il testo.
+| Nell'anteprima il server scrive già lo stile sulla riga vuota.
+*/
+.tab-sheet p[data-line-size]:has(> br.ProseMirror-trailingBreak:only-child) {
+    font-size: var(--line-size);
+}
+
+.tab-sheet p[data-line-font]:has(> br.ProseMirror-trailingBreak:only-child) {
+    font-family: var(--line-font), monospace;
+}
+
 /* Interruzione di pagina: invisibile nell'anteprima, riga tratteggiata con scritta nell'editor */
 .tab-page-break {
     height: 0;
@@ -128,4 +142,56 @@
 
 .ProseMirror .tab-page-break.ProseMirror-selectednode {
     color: #2563eb;
+}
+
+/*
+| Note della Release nella finestra dopo un aggiornamento: HTML generato dal Markdown scritto su
+| GitHub (titoli, paragrafi, elenchi, link, codice). Il reset di Tailwind toglie gli stili di
+| base, qui si rimettono quelli che servono.
+*/
+.release-notes > * + * {
+    margin-top: 0.75rem;
+}
+
+.release-notes h1,
+.release-notes h2,
+.release-notes h3,
+.release-notes h4 {
+    font-weight: 600;
+    color: inherit;
+}
+
+.release-notes h1 {
+    font-size: 1.125rem;
+}
+
+.release-notes h2 {
+    font-size: 1rem;
+}
+
+.release-notes ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+}
+
+.release-notes ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+}
+
+.release-notes li + li {
+    margin-top: 0.25rem;
+}
+
+.release-notes a {
+    text-decoration: underline;
+}
+
+.release-notes code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.875em;
+}
+
+.release-notes strong {
+    font-weight: 600;
 }

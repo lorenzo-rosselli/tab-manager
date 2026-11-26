@@ -9,8 +9,9 @@
 |    (cartella %LOCALAPPDATA%\TabManager\Edge), separato dal browser di tutti i giorni.
 | 3. Quando la finestra viene chiusa, spegne il server.
 | Prima di tutto controlla se su GitHub c'è una Release nuova: se c'è, apre la finestra di
-| aggiornamento (update.ps1), che alla fine riapre l'app. Poi, una volta al giorno, fa una copia
-| di sicurezza dell'archivio dei brani (php artisan tab:backup --daily → Documenti\Tab Manager\Backup).
+| aggiornamento (update.ps1), che alla fine riapre l'app. Dopo aver aperto la finestra, una volta al
+| giorno, fa in background una copia di sicurezza dell'archivio dei brani
+| (php artisan tab:backup --daily → Documenti\Tab Manager\Backup).
 |
 | Quale PHP: se nel computer c'è WSL (Ubuntu) con PHP 8.4 o più recente, usa sempre quello.
 | Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi così
@@ -97,12 +98,13 @@ function ConvertTo-WslPath([string] $path) {
     return '/mnt/' + $Matches[1].ToLower() + '/' + ($Matches[2] -replace '\\', '/')
 }
 
-# Argomenti di wsl.exe per eseguire "php ..." nella cartella $dir. L'archivio dei brani nel .env
-# ha un percorso di Windows: lo si passa a PHP già tradotto (una variabile d'ambiente vince sul .env).
+# Argomenti di wsl.exe per eseguire "php ..." nella cartella $dir, con le variabili d'ambiente
+# dell'app (una variabile d'ambiente vince sul .env): la sessione in un file (vedi sotto) e
+# l'archivio dei brani, che nel .env ha un percorso di Windows, già tradotto per Linux.
 function Get-WslArgs([string] $dir, [string[]] $phpArgs) {
-    $list = @('--cd', $dir, '--exec')
+    $list = @('--cd', $dir, '--exec', 'env', 'SESSION_DRIVER=file')
     if ($wslDatabase) {
-        $list += @('env', "DB_DATABASE=$wslDatabase")
+        $list += "DB_DATABASE=$wslDatabase"
     }
     return $list + @('php') + $phpArgs
 }
@@ -123,6 +125,25 @@ function Stop-Server {
     }
     Stop-Process -Id $server.Id -ErrorAction SilentlyContinue
 }
+
+# Sessione di Laravel in un file (storage\framework\sessions) invece che nel database: Laravel
+# la salva a ogni pagina, e una scrittura su SQLite (archivio in Documenti) è molto più lenta,
+# soprattutto con il PHP di WSL. Vale per l'app aperta dal collegamento, non tocca il .env.
+# (Non nel cookie: dopo un errore di validazione la sessione contiene tutto il foglio, troppo
+# grande per un cookie.) I programmi avviati da qui ereditano la variabile.
+$env:SESSION_DRIVER = 'file'
+
+# Opzioni di PHP per il server dell'app:
+# - OPcache tiene in memoria il codice già letto e, con validate_timestamps=0, non ricontrolla più
+#   i file sul disco: ogni file si legge una volta sola finché l'app resta aperta (con il PHP di
+#   WSL leggere i file di Windows è lento). Dopo una modifica al codice basta riaprire l'app;
+# - realpath_cache: PHP ricorda più a lungo dove si trovano i file, con meno controlli sul disco.
+$phpOptions = @(
+    '-d', 'opcache.enable_cli=1',
+    '-d', 'opcache.validate_timestamps=0',
+    '-d', 'realpath_cache_size=4096K',
+    '-d', 'realpath_cache_ttl=3600'
+)
 
 try {
     # Aggiornamento: non sul computer di sviluppo (cartella con .git: lì si usa git) e non se l'app
@@ -182,28 +203,15 @@ try {
         throw "Mancano i file dell'interfaccia.`nApri il terminale nella cartella del progetto ed esegui:`nnpm run build"
     }
 
-    # Copia di sicurezza del giorno (solo se oggi non c'è già). Un errore qui non blocca l'app.
-    try {
-        if ($useWsl) {
-            $ErrorActionPreference = 'Continue'
-            & $wsl (Get-WslArgs $root @('artisan', 'tab:backup', '--daily')) 2>$null | Out-Null
-            $ErrorActionPreference = 'Stop'
-        } else {
-            & $php (Join-Path $root 'artisan') tab:backup --daily | Out-Null
-        }
-    } catch {
-        $ErrorActionPreference = 'Stop'
-    }
-
     # Server web integrato di PHP, come fa "php artisan serve": cartella public e router di Laravel.
     if (-not (Test-Port '127.0.0.1' $port)) {
         if ($useWsl) {
-            # WSL inoltra a Windows le porte aperte su 127.0.0.1. OPcache rende più veloci le pagine.
-            $wslArgs = Get-WslArgs (Join-Path $root 'public') (@('-d', 'opcache.enable_cli=1') + $routerArgs)
+            # WSL inoltra a Windows le porte aperte su 127.0.0.1.
+            $wslArgs = Get-WslArgs (Join-Path $root 'public') ($phpOptions + $routerArgs)
             $server = Start-Process -FilePath $wsl -WindowStyle Hidden -PassThru -ArgumentList (Join-Args $wslArgs)
         } else {
             $server = Start-Process -FilePath $php -WindowStyle Hidden -PassThru `
-                -WorkingDirectory (Join-Path $root 'public') -ArgumentList $routerArgs
+                -WorkingDirectory (Join-Path $root 'public') -ArgumentList ($phpOptions + $routerArgs)
         }
 
         # Fino a 30 secondi: la prima volta WSL impiega qualche secondo ad accendersi.
@@ -222,6 +230,19 @@ try {
         '--no-first-run',
         '--no-default-browser-check'
     )
+
+    # Copia di sicurezza del giorno (solo se oggi non c'è già), in background dopo aver aperto la
+    # finestra, così l'app compare subito. Un errore qui non blocca l'app.
+    try {
+        if ($useWsl) {
+            Start-Process -FilePath $wsl -WindowStyle Hidden `
+                -ArgumentList (Join-Args (Get-WslArgs $root @('artisan', 'tab:backup', '--daily')))
+        } else {
+            Start-Process -FilePath $php -WindowStyle Hidden -WorkingDirectory $root `
+                -ArgumentList @('artisan', 'tab:backup', '--daily')
+        }
+    } catch {
+    }
 
     # Se il server l'ha acceso questo script, lo spegne quando la finestra viene chiusa.
     # (Se era già acceso, c'è già un'altra finestra aperta: ci pensa lo script che l'ha aperta.)

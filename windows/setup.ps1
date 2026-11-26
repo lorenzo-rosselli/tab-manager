@@ -16,11 +16,9 @@
 |  3. le librerie PHP (composer install) e JavaScript (npm install);
 |  4. l'interfaccia compilata (npm run build);
 |  5. la configurazione (.env, solo la prima volta);
-|  6. l'archivio dei brani in Documenti\Tab Manager\database.sqlite, fuori dalla cartella dell'app:
-|     l'app si può cancellare, riscaricare e aggiornare senza perdere i brani. Un archivio che si
-|     trova ancora in una posizione vecchia (%LOCALAPPDATA%\TabManager, oppure database\database.sqlite
-|     dentro la cartella dell'app) viene copiato lì; il file vecchio resta, rinominato
-|     "database.sqlite.spostato", e una copia va anche nella cartella Backup;
+|  6. l'archivio dei brani in Documenti\Tab Manager\database.sqlite, fuori dalla cartella dell'app
+|     (scritto nel .env come DB_DATABASE): l'app si può cancellare, riscaricare e aggiornare senza
+|     perdere i brani;
 |  7. il database: prima di aggiornarlo ne fa una copia in Documenti\Tab Manager\Backup;
 |     la prima volta lo crea con i brani di prova;
 |  8. il collegamento "Tab Manager" sul desktop e nella cartella dell'app, e avvia l'app.
@@ -57,7 +55,6 @@ $root = Split-Path -Parent $PSScriptRoot   # cartella dell'app
 $dataDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tab Manager'   # anche con Documenti su OneDrive
 $database = Join-Path $dataDir 'database.sqlite'
 $backupDir = Join-Path $dataDir 'Backup'
-$legacyDatabase = Join-Path $env:LOCALAPPDATA 'TabManager\database.sqlite'   # posizione delle prime versioni
 $herdBin = Join-Path $env:USERPROFILE '.config\herd-lite\bin'
 $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
 $useWsl = $false
@@ -221,46 +218,7 @@ try {
     }
 
     # 4. Archivio dei brani in Documenti\Tab Manager, fuori dalla cartella dell'app.
-    #    Se c'è un archivio in una posizione vecchia, lo si copia nella cartella nuova (se lì non ce n'è
-    #    già uno); il file vecchio non si cancella: si rinomina "database.sqlite.spostato" (così non viene
-    #    ripreso alla prossima installazione) e una sua copia va nella cartella Backup.
     New-Item -ItemType Directory -Force -Path $dataDir, $backupDir | Out-Null
-    $configured = Get-EnvValue 'DB_DATABASE'
-    if (-not $configured) {
-        $configured = Join-Path $root 'database\database.sqlite'   # predefinito di Laravel
-    }
-    $oldDatabases = @()
-    foreach ($candidate in @($configured, $legacyDatabase)) {
-        if (-not (Test-Path $candidate) -or (Test-SamePath $candidate $database)) {
-            continue
-        }
-        $full = [System.IO.Path]::GetFullPath($candidate)   # "C:/a/b" e "C:\a\b" sono lo stesso file
-        if (-not ($oldDatabases | Where-Object { Test-SamePath $_ $full })) {
-            $oldDatabases += $full
-        }
-    }
-    foreach ($old in $oldDatabases) {
-        $stamp = Get-Date -Format 'yyyy-MM-dd HH-mm-ss'
-        $origin = if (Test-SamePath $old $legacyDatabase) { 'da AppData' } else { "dalla cartella dell'app" }
-        Copy-Item $old (Join-Path $backupDir "$stamp archivio precedente $origin.sqlite")
-        if (-not (Test-Path $database)) {
-            Write-Step "Sposto l'archivio dei brani in $dataDir..."
-            Copy-Item $old $database
-        } else {
-            Write-Host "C'era già un archivio in $dataDir`: quello trovato in $old è stato copiato nella cartella Backup." -ForegroundColor Yellow
-        }
-        try {
-            $renamed = "$old.spostato"
-            if (Test-Path $renamed) {
-                $renamed = "$old.spostato $stamp"   # c'è già un file spostato prima: nome diverso
-            }
-            Rename-Item $old (Split-Path -Leaf $renamed)
-            Write-Host "Il file vecchio resta come $renamed`: si può cancellare quando hai controllato che i brani ci sono."
-        } catch {
-            # Succede se Tab Manager è aperto: la copia è fatta, il file vecchio resta com'è.
-            Write-Host "Non ho potuto rinominare $old (forse Tab Manager è aperto): la copia è fatta, il file vecchio resta com'è." -ForegroundColor Yellow
-        }
-    }
     if (-not ((Get-EnvValue 'DB_DATABASE') -and (Test-SamePath (Get-EnvValue 'DB_DATABASE') $database))) {
         Set-DatabasePath $database
     }
