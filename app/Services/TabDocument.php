@@ -75,9 +75,11 @@ class TabDocument
      * Due interruzioni di fila danno una pagina vuota (un paragrafo vuoto su una pagina a sé);
      * un'interruzione in fondo al foglio, senza niente dopo, viene ignorata.
      * Font, dimensioni e colori non ammessi vengono ignorati (resta il default).
+     * "font" e "size" del paragrafo (attributi fontFamily e fontSize, come il segno di paragrafo di Word)
+     * contano solo per una riga vuota: danno la sua altezza, che altrimenti sarebbe quella del testo predefinito.
      *
      * @param  array<string, mixed>|null  $doc
-     * @return list<array{align: string, pageBreakBefore: bool, runs: list<array{break?: true, text?: string, bold?: bool, italic?: bool, underline?: bool, font?: ?string, size?: ?int, color?: ?string, highlight?: ?string}>}>
+     * @return list<array{align: string, pageBreakBefore: bool, font: ?string, size: ?int, runs: list<array{break?: true, text?: string, bold?: bool, italic?: bool, underline?: bool, font?: ?string, size?: ?int, color?: ?string, highlight?: ?string}>}>
      */
     public static function paragraphs(?array $doc): array
     {
@@ -87,7 +89,7 @@ class TabDocument
         foreach ($doc['content'] ?? [] as $node) {
             if (($node['type'] ?? null) === 'pageBreak') {
                 if ($pageBreak) {
-                    $paragraphs[] = ['align' => 'left', 'pageBreakBefore' => true, 'runs' => []];
+                    $paragraphs[] = ['align' => 'left', 'pageBreakBefore' => true, 'font' => null, 'size' => null, 'runs' => []];
                 }
                 $pageBreak = true;
 
@@ -99,6 +101,8 @@ class TabDocument
             }
 
             $align = $node['attrs']['textAlign'] ?? 'left';
+            $lineFont = $node['attrs']['fontFamily'] ?? null;
+            $lineSize = (int) ($node['attrs']['fontSize'] ?? 0); // "12pt" → 12
             $runs = [];
 
             foreach ($node['content'] ?? [] as $child) {
@@ -153,6 +157,8 @@ class TabDocument
             $paragraphs[] = [
                 'align' => array_key_exists((string) $align, Song::ALIGNMENTS) ? $align : 'left',
                 'pageBreakBefore' => $pageBreak,
+                'font' => in_array($lineFont, Song::FONTS, true) ? $lineFont : null,
+                'size' => in_array($lineSize, Song::FONT_SIZES, true) ? $lineSize : null,
                 'runs' => $runs,
             ];
             $pageBreak = false;
@@ -230,8 +236,15 @@ class TabDocument
                 $html .= '<div class="tab-page-break" data-page-break></div>';
             }
 
-            // Un paragrafo vuoto resta una riga vuota.
-            $html .= '<p style="text-align: '.$paragraph['align'].'">'.($inner === '' ? '<br>' : $inner).'</p>';
+            // Un paragrafo vuoto resta una riga vuota, con il suo font e la sua dimensione (la sua altezza).
+            $styles = ['text-align: '.$paragraph['align']];
+            if ($inner === '') {
+                $styles = array_merge($styles, array_filter([
+                    $paragraph['font'] ? "font-family: '{$paragraph['font']}', monospace" : null,
+                    $paragraph['size'] ? "font-size: {$paragraph['size']}pt" : null,
+                ]));
+            }
+            $html .= '<p style="'.implode('; ', $styles).'">'.($inner === '' ? '<br>' : $inner).'</p>';
         }
 
         return $html;

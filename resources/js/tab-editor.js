@@ -30,6 +30,8 @@
 |   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
 |   restano allineate; Backspace rimette un trattino al posto del carattere cancellato.
 |   La scelta resta salvata nel browser (localStorage).
+| - Righe vuote: hanno anche loro un font e una dimensione (come il segno di paragrafo di Word), così
+|   cambiando la dimensione di più righe cambia anche l'altezza di quelle vuote (estensione EmptyLineFont).
 | - Tasto Tab: nel foglio non passa al campo successivo ma sposta il testo in orizzontale fino alla
 |   colonna successiva multipla di 4, aggiungendo spazi (con la sovrascrittura accesa sposta solo il
 |   cursore). Maiuscolo+Tab fa come sempre: esce dal foglio verso il campo precedente.
@@ -38,6 +40,7 @@
 import { Editor, Extension, Node } from '@tiptap/core';
 import { Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state';
+import { Mapping } from '@tiptap/pm/transform';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -74,6 +77,158 @@ const AutoLine = Extension.create({
                 },
             },
         }];
+    },
+});
+
+/* ---------------- Font e dimensione delle righe vuote ---------------- */
+
+// Una riga vuota non ha testo, quindi non ha segni di font o di dimensione: senza questa estensione
+// sarebbe sempre alta come il testo predefinito (Lucida Console 10 pt), anche in mezzo a righe a 12 pt.
+// Come il segno di paragrafo di Word, ogni paragrafo può avere un suo font e una sua dimensione
+// (attributi fontFamily e fontSize del paragrafo), che contano solo quando il paragrafo è vuoto:
+// app.css li applica alle righe vuote, l'anteprima e il Word li leggono dal server (TabDocument).
+// Il formato di una riga vuota si decide così:
+// 1. scegliendo font o dimensione dalla barra con una selezione: anche le righe vuote selezionate
+//    (comando setEmptyLinesFormat, usato dalla barra insieme a setFontFamily e setFontSize);
+// 2. con il cursore nella riga vuota: i segni "in attesa" (font o dimensione scelti dalla barra lì,
+//    oppure portati da Invio dalla riga di sopra) o, se la riga è appena stata svuotata, il formato
+//    del testo che aveva;
+// 3. scrivendo in una riga vuota, il testo prende il suo formato.
+const LINE_SIZE = /^\d{1,2}pt$/;          // es. "12pt"
+const LINE_FONT = /^[A-Za-z][A-Za-z ]*$/;  // es. "Courier New"
+
+// Solo font e dimensione, e solo se hanno un valore: null se non c'è niente.
+function lineFormat(attrs) {
+    const format = {};
+
+    if (LINE_SIZE.test(attrs?.fontSize ?? '')) format.fontSize = attrs.fontSize;
+    if (LINE_FONT.test(attrs?.fontFamily ?? '')) format.fontFamily = attrs.fontFamily;
+
+    return Object.keys(format).length ? format : null;
+}
+
+const isEmptyLine = (node) => node?.type.name === 'paragraph' && node.content.size === 0;
+
+const EmptyLineFont = Extension.create({
+    name: 'emptyLineFont',
+
+    addGlobalAttributes() {
+        return [{
+            types: ['paragraph'],
+            attributes: {
+                // keepOnSplit: false → con Invio la riga nuova prende il formato dai segni (regola 2).
+                fontSize: {
+                    default: null,
+                    keepOnSplit: false,
+                    parseHTML: (element) => (LINE_SIZE.test(element.dataset.lineSize ?? '') ? element.dataset.lineSize : null),
+                    renderHTML: (attributes) => (LINE_SIZE.test(attributes.fontSize ?? '')
+                        ? { 'data-line-size': attributes.fontSize, style: `--line-size: ${attributes.fontSize}` }
+                        : {}),
+                },
+                fontFamily: {
+                    default: null,
+                    keepOnSplit: false,
+                    parseHTML: (element) => (LINE_FONT.test(element.dataset.lineFont ?? '') ? element.dataset.lineFont : null),
+                    renderHTML: (attributes) => (LINE_FONT.test(attributes.fontFamily ?? '')
+                        ? { 'data-line-font': attributes.fontFamily, style: `--line-font: '${attributes.fontFamily}'` }
+                        : {}),
+                },
+            },
+        }];
+    },
+
+    addCommands() {
+        return {
+            // 1. Righe vuote nella selezione: prendono il font e/o la dimensione scelti dalla barra.
+            setEmptyLinesFormat: (format) => ({ tr, dispatch }) => {
+                if (dispatch) {
+                    tr.selection.ranges.forEach(({ $from, $to }) => {
+                        tr.doc.nodesBetween($from.pos, $to.pos, (node, pos) => {
+                            if (isEmptyLine(node)) {
+                                tr.setNodeMarkup(pos, null, { ...node.attrs, ...format });
+                            }
+                        });
+                    });
+                }
+
+                return true;
+            },
+        };
+    },
+
+    addProseMirrorPlugins() {
+        return [new Plugin({
+            key: new PluginKey('emptyLineFont'),
+
+            appendTransaction(transactions, oldState, newState) {
+                const docChanged = transactions.some((transaction) => transaction.docChanged);
+                const marksChanged = transactions.some((transaction) => transaction.storedMarksSet);
+                const tr = newState.tr;
+                // Segni "in attesa" (font, grassetto... per il prossimo testo scritto). Un passo che
+                // cambia il documento li cancella: se ne aggiungiamo uno, vanno rimessi (regola 3).
+                const pending = newState.storedMarks;
+
+                // Cambia font e/o dimensione di una riga vuota, se è diverso.
+                const setFormat = (pos, format, replace = false) => {
+                    const node = tr.doc.nodeAt(pos);
+                    const attrs = replace
+                        ? { ...node.attrs, fontSize: format?.fontSize ?? null, fontFamily: format?.fontFamily ?? null }
+                        : { ...node.attrs, ...format };
+
+                    if (attrs.fontSize !== node.attrs.fontSize || attrs.fontFamily !== node.attrs.fontFamily) {
+                        tr.setNodeMarkup(pos, null, attrs);
+                    }
+                };
+
+                // 2. Riga vuota con il cursore.
+                const $cursor = tr.selection.$from;
+                if (tr.selection.empty && isEmptyLine($cursor.parent) && (docChanged || marksChanged)) {
+                    const pos = $cursor.before();
+                    const stored = pending?.find((mark) => mark.type.name === 'textStyle');
+                    const format = lineFormat(stored?.attrs);
+
+                    if (format) {
+                        setFormat(pos, format);
+                    } else if (docChanged) {
+                        // Appena svuotata? Allora prende il formato dell'ultimo pezzo di testo che aveva.
+                        const mapping = new Mapping();
+                        transactions.forEach((transaction) => mapping.appendMapping(transaction.mapping));
+                        const old = oldState.doc.nodeAt(mapping.invert().map(pos));
+
+                        if (old?.type.name === 'paragraph' && old.content.size > 0) {
+                            let last = null;
+                            old.forEach((child) => {
+                                if (child.isText) last = child;
+                            });
+                            const style = last?.marks.find((mark) => mark.type.name === 'textStyle');
+                            setFormat(pos, lineFormat(style?.attrs), true);
+                        }
+                    }
+                }
+
+                // 3. Cursore in una riga vuota con un formato: il testo che si scrive lo prende
+                //    (segni "in attesa", come quando si sceglie la dimensione dalla barra).
+                const line = tr.selection.empty ? tr.doc.resolve(tr.selection.from).parent : null;
+                const format = isEmptyLine(line) ? lineFormat(line.attrs) : null;
+
+                if (format) {
+                    const stored = pending ?? [];
+                    const current = stored.find((mark) => mark.type.name === 'textStyle');
+                    const attrs = { ...(current?.attrs ?? {}), ...format };
+
+                    if (tr.docChanged || current?.attrs.fontSize !== attrs.fontSize || current?.attrs.fontFamily !== attrs.fontFamily) {
+                        tr.setStoredMarks([
+                            ...stored.filter((mark) => mark.type.name !== 'textStyle'),
+                            newState.schema.marks.textStyle.create(attrs),
+                        ]);
+                    }
+                } else if (tr.docChanged && pending) {
+                    tr.setStoredMarks(pending);
+                }
+
+                return tr.docChanged || tr.storedMarksSet ? tr : null;
+            },
+        })];
     },
 });
 
@@ -559,6 +714,7 @@ if (element) {
             PageBreak,
             Overwrite,
             TabKey,
+            EmptyLineFont,
             Pagination,
         ],
         content: JSON.parse(input.value),
@@ -593,8 +749,15 @@ if (element) {
     const fontSelect = document.getElementById('tab-font');
     const sizeSelect = document.getElementById('tab-size');
 
-    fontSelect.addEventListener('change', () => editor.chain().focus().setFontFamily(fontSelect.value).run());
-    sizeSelect.addEventListener('change', () => editor.chain().focus().setFontSize(`${sizeSelect.value}pt`).run());
+    // Il font e la dimensione valgono anche per le righe vuote selezionate (vedi EmptyLineFont).
+    fontSelect.addEventListener('change', () => editor.chain().focus()
+        .setFontFamily(fontSelect.value)
+        .setEmptyLinesFormat({ fontFamily: fontSelect.value })
+        .run());
+    sizeSelect.addEventListener('change', () => editor.chain().focus()
+        .setFontSize(`${sizeSelect.value}pt`)
+        .setEmptyLinesFormat({ fontSize: `${sizeSelect.value}pt` })
+        .run());
 
     // Tavolozze di colore ed evidenziatore: menu a tendina <details>; scelto il colore, il menu si chiude.
     // data-value vuoto = "Automatico" (testo nero) / "Nessuno" (niente evidenziatore).

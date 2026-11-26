@@ -100,6 +100,20 @@
     pointer-events: none;
 }
 
+/*
+| Righe vuote nell'editor: font e dimensione propri (attributi del paragrafo, vedi EmptyLineFont in
+| tab-editor.js), così una riga vuota tra righe a 12 pt è alta come loro. Valgono solo finché la riga
+| è vuota (ProseMirror la disegna come un <p> con un solo <br>): con del testo conta il testo.
+| Nell'anteprima il server scrive già lo stile sulla riga vuota.
+*/
+.tab-sheet p[data-line-size]:has(> br.ProseMirror-trailingBreak:only-child) {
+    font-size: var(--line-size);
+}
+
+.tab-sheet p[data-line-font]:has(> br.ProseMirror-trailingBreak:only-child) {
+    font-family: var(--line-font), monospace;
+}
+
 /* Interruzione di pagina: invisibile nell'anteprima, riga tratteggiata con scritta nell'editor */
 .tab-page-break {
     height: 0;

@@ -57,6 +57,15 @@ class TabDocxGenerator
                 },
             ]);
 
+            // Riga vuota con un font o una dimensione: uno spazio con quel formato, così Word le dà la
+            // stessa altezza che ha nel foglio (senza testo sarebbe alta come il testo predefinito).
+            if ($paragraph['runs'] === [] && ($paragraph['font'] || $paragraph['size'])) {
+                $textRun->addText(' ', [
+                    'name' => $paragraph['font'] ?? Song::DEFAULT_FONT,
+                    'size' => $paragraph['size'] ?? Song::DEFAULT_FONT_SIZE,
+                ]);
+            }
+
             foreach ($paragraph['runs'] as $run) {
                 if (isset($run['break'])) {
                     $textRun->addTextBreak();
