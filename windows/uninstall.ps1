@@ -5,7 +5,8 @@
 | Toglie da questo computer ciò che l'installazione ha creato fuori dalla cartella dell'app:
 |  1. chiude l'app, se è aperta (finestra di Edge e server PHP sulla porta 8765, anche in WSL);
 |  2. cancella il collegamento "Tab Manager" sul desktop e quello nella cartella dell'app;
-|  3. cancella il profilo di Edge della finestra dell'app (%LOCALAPPDATA%\TabManager\Edge);
+|  3. cancella il profilo di Edge della finestra dell'app (%LOCALAPPDATA%\TabManager\Edge) e la copia
+|     della versione precedente lasciata dall'aggiornamento automatico (...\versione-precedente);
 |
 | Non tocca mai:
 |  - l'archivio dei brani e le sue copie (Documenti\Tab Manager): reinstallando Tab Manager si
@@ -100,6 +101,14 @@ try {
         Write-Host "Cancellato: $edgeProfile"
     }
 
+    # Copia di riserva lasciata dall'aggiornamento automatico (update.ps1).
+    $previous = Join-Path $appDataDir 'versione-precedente'
+    if (Test-Path $previous) {
+        Write-Step "Cancello la copia della versione precedente dell'app..."
+        Remove-Path $previous
+        Write-Host "Cancellato: $previous"
+    }
+
     # 4. Archivio dei brani: non si tocca. Si dice solo dov'è (dal .env, come in setup.ps1).
     $database = Get-EnvValue 'DB_DATABASE'
     if (-not $database) {
@@ -108,7 +117,7 @@ try {
     $database = [System.IO.Path]::GetFullPath($database)
     $insideApp = $database.StartsWith($root.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)
 
-    # La cartella di Edge in AppData, se è rimasta vuota.
+    # La cartella dell'app in AppData, se è rimasta vuota.
     if ((Test-Path $appDataDir) -and -not (Get-ChildItem -LiteralPath $appDataDir -Force)) {
         Remove-Item -LiteralPath $appDataDir -Force
     }

@@ -28,3 +28,6 @@ Thumbs.db
 
 # Collegamento all'app desktop (percorsi assoluti di questo computer: lo crea windows/install-shortcut.ps1)
 /Tab Manager.lnk
+
+# Release installata (la scrive windows/update.ps1 sui computer che aggiornano da GitHub)
+/windows/version.txt

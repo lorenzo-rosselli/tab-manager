@@ -25,8 +25,13 @@
 |     la prima volta lo crea con i brani di prova;
 |  8. il collegamento "Tab Manager" sul desktop e nella cartella dell'app, e avvia l'app.
 |
-| Si può rilanciare quando si vuole: è anche il modo per aggiornare l'app.
+| Si può rilanciare quando si vuole: è anche il modo per aggiornare l'app a mano. L'aggiornamento
+| automatico (update.ps1) lo esegue con -NoLaunch: alla fine non apre l'app, ci pensa lui.
 #>
+
+param(
+    [switch] $NoLaunch
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -274,6 +279,10 @@ try {
     & (Join-Path $PSScriptRoot 'install-shortcut.ps1')
 
     Write-Host ''
+    if ($NoLaunch) {
+        Write-Host 'Installazione completata.' -ForegroundColor Green
+        exit 0
+    }
     Write-Host 'Installazione completata. Apro Tab Manager...' -ForegroundColor Green
     Start-Process -FilePath (Join-Path $root 'Tab Manager.lnk')
     exit 0

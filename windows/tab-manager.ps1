@@ -8,8 +8,9 @@
 |    schede o menu; titolo e icona sono quelli di Tab Manager. Edge usa un profilo tutto suo
 |    (cartella %LOCALAPPDATA%\TabManager\Edge), separato dal browser di tutti i giorni.
 | 3. Quando la finestra viene chiusa, spegne il server.
-| Prima di tutto, una volta al giorno, fa una copia di sicurezza dell'archivio dei brani
-| (php artisan tab:backup --daily → Documenti\Tab Manager\Backup).
+| Prima di tutto controlla se su GitHub c'è una Release nuova: se c'è, apre la finestra di
+| aggiornamento (update.ps1), che alla fine riapre l'app. Poi, una volta al giorno, fa una copia
+| di sicurezza dell'archivio dei brani (php artisan tab:backup --daily → Documenti\Tab Manager\Backup).
 |
 | Quale PHP: se nel computer c'è WSL (Ubuntu) con PHP 8.4 o più recente, usa sempre quello.
 | Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi così
@@ -20,6 +21,10 @@
 | Gli errori compaiono in una finestra di messaggio (lo script gira senza console).
 #>
 
+param(
+    [switch] $SkipUpdate   # lo passa update.ps1 quando riapre l'app: niente nuovo controllo
+)
+
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot   # cartella del progetto (questo file è in "windows")
@@ -27,6 +32,8 @@ $port = 8765
 $url = "http://127.0.0.1:$port"
 $edgeProfile = Join-Path $env:LOCALAPPDATA 'TabManager\Edge'
 $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
+$repo = 'lorenzo-rosselli/tab-manager'
+$versionFile = Join-Path $PSScriptRoot 'version.txt'   # la Release installata (la scrive update.ps1)
 $server = $null
 $useWsl = $false
 $wslDatabase = $null
@@ -52,6 +59,19 @@ function Test-Port([string] $hostName, [int] $number) {
 function Test-Window {
     $processes = Get-CimInstance Win32_Process -Filter "Name = 'msedge.exe'" -ErrorAction SilentlyContinue
     return [bool]($processes | Where-Object { $_.CommandLine -like "*$edgeProfile*" })
+}
+
+# Nome dell'ultima Release pubblicata su GitHub (es. "v1.1"), oppure null se non ce n'è nessuna,
+# se manca Internet o se GitHub non risponde entro 5 secondi: in quei casi l'app si apre e basta.
+function Get-LatestRelease {
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" `
+            -Headers @{ 'User-Agent' = 'TabManager' } -TimeoutSec 5 -UseBasicParsing
+        return [string] $release.tag_name
+    } catch {
+        return $null
+    }
 }
 
 # Vero se WSL c'è e il suo PHP è almeno 8.4.1 (la versione minima delle librerie in composer.lock).
@@ -105,6 +125,18 @@ function Stop-Server {
 }
 
 try {
+    # Aggiornamento: non sul computer di sviluppo (cartella con .git: lì si usa git) e non se l'app
+    # è già aperta (server acceso). Se c'è una Release nuova, la finestra di aggiornamento fa il resto.
+    if (-not $SkipUpdate -and -not (Test-Path (Join-Path $root '.git')) -and -not (Test-Port '127.0.0.1' $port)) {
+        $latest = Get-LatestRelease
+        $installed = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { '' }
+        if ($latest -and $latest -ne $installed) {
+            Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList `
+                "-NoProfile -ExecutionPolicy Bypass -File `"$(Join-Path $PSScriptRoot 'update.ps1')`" -Tag `"$latest`""
+            exit 0
+        }
+    }
+
     $routerArgs = @('-S', "127.0.0.1:$port", '../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')
 
     if (Test-WslPhp) {

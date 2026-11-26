@@ -44,7 +44,14 @@ Conserva lo ZIP su una chiavetta, nel cloud o mandalo per email a te stesso.
 
 ## Aggiornamento
 
-Scarica il nuovo ZIP, sbloccalo ed estrailo (anche al posto della cartella vecchia), poi doppio clic su **`Installa Tab Manager.cmd`**. I brani restano: prima di aggiornare l'installazione ne fa una copia in `Documenti\Tab Manager\Backup`.
+Tab Manager si aggiorna da solo. Ogni volta che lo apri controlla se su GitHub è stata pubblicata una nuova versione (una **Release**). Se c'è, si apre una finestra "Aggiornamento di Tab Manager": scarica la nuova versione, la prepara e dopo qualche minuto apre l'app. Non chiudere quella finestra.
+- I brani non vengono toccati: prima di aggiornare ne fa comunque una copia in `Documenti\Tab Manager\Backup`.
+- Senza Internet l'app si apre come sempre e l'aggiornamento aspetta il prossimo avvio.
+- Se l'aggiornamento non riesce, rimette la versione di prima e riprova al prossimo avvio.
+
+**Se hai una versione senza aggiornamento automatico** (installata prima che ci fosse), aggiornala a mano una volta: scarica il nuovo ZIP, sbloccalo, estrailo al posto della cartella vecchia e fai doppio clic su **`Installa Tab Manager.cmd`**. Non serve disinstallare. Da lì in poi si aggiorna da sola.
+
+Per aggiornare a mano in qualsiasi momento vale lo stesso procedimento.
 
 Chi aveva una versione precedente con i brani in `%LOCALAPPDATA%\TabManager`: l'installazione li sposta da sola in `Documenti\Tab Manager`. Il file vecchio resta, rinominato `database.sqlite.spostato`, e si può cancellare dopo aver controllato che i brani ci sono.
 
