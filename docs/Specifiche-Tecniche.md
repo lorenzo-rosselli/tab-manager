@@ -31,8 +31,8 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 | Elemento | Valore |
 |---|---|
 | Sistema operativo | Windows 11 (con Smart App Control attivo) |
-| PHP | 8.5.x, installato con **php.new** (Herd Lite) in `C:\Users\lorer\.config\herd-lite\bin` |
-| Composer | 2.8.x (Herd Lite) |
+| PHP | 8.5.x in **WSL** (Ubuntu), usato dall'app e per lo sviluppo; il PHP di **php.new** (Herd Lite, `C:\Users\lorer\.config\herd-lite\bin`) è installato ma Smart App Control lo blocca |
+| Composer | 2.8.x (in WSL) |
 | Laravel Installer | 5.33.x |
 | Node.js / npm | Node v26 (installazione Windows) |
 | Editor | Visual Studio Code |
@@ -40,38 +40,38 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 | Cartella progetto | `D:\Workspaces\Rosse Production\Tab Manager` (repository GitHub `lorenzo-rosselli/tab-manager`, ramo `main`) |
 
 ### Struttura della cartella del progetto
-Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database`, `lang`, `public`, `resources`, `routes`, `storage`, `tests`), che restano dove Laravel se le aspetta:
+Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database`, `lang`, `public`, `resources`, `routes`, `storage`), che restano dove Laravel se le aspetta:
 - `docs/`: questo documento, `Specifiche-Tecniche.md`;
 - `windows/`: gli script per Windows, cioè avvio in finestra dedicata, collegamenti e installazione (vedi "Avvio come app desktop");
 - nella cartella principale: `README.md` (istruzioni per chi installa l'app, mostrate da GitHub), `Installa Tab Manager.cmd` (il file da cliccare per installare o aggiornare), `Disinstalla Tab Manager.cmd` (il file da cliccare per disinstallare) e il collegamento `Tab Manager.lnk` (creato dall'installazione, non su git).
 
 ### Note sull'ambiente
-- **Smart App Control** blocca i `php.exe` scaricati a mano da windows.php.net (errore "bloccato dai criteri di Device Guard"). Il PHP installato con php.new invece funziona. Non si possono aggiungere eccezioni per singole app.
-- **Alternativa di riserva:** WSL con Ubuntu è già installato e configurato (PHP 8.5, Composer, Laravel Installer, Node). Se su Windows compare un nuovo blocco, si lavora lì, con i progetti in `~/progetti`.
+- **Smart App Control** blocca i `php.exe` non firmati, sia quelli di windows.php.net sia quello di php.new (errore "bloccato dai criteri di Device Guard"): decide in base alla "reputazione" del file e può cambiare idea in qualsiasi momento. Non si possono aggiungere eccezioni per singole app.
+- Per questo su questo computer **PHP gira in WSL** (Ubuntu, con PHP 8.5, Composer e Laravel Installer), che Smart App Control non controlla: lo usa l'app (vedi "Avvio come app desktop") e si usa per i comandi `php` e `composer`, lanciati dal terminale di Ubuntu nella cartella del progetto (`cd "/mnt/d/Workspaces/Rosse Production/Tab Manager"`). Il PHP di WSL non ha l'estensione `gd`, richiesta da PHPWord solo per le immagini: i comandi di Composer che risolvono le dipendenze vogliono `--ignore-platform-req=ext-gd`.
 - **PowerShell 5.1 non supporta `&&`**: i comandi vanno eseguiti uno alla volta, oppure si usa PowerShell 7.
 - La **Execution Policy** è stata impostata a `RemoteSigned` per l'utente corrente, così `npm` funziona.
 - Il percorso `Rosse Production\Tab Manager` contiene spazi: nei comandi va scritto **tra virgolette**.
-- Per lavorare servono due terminali: `php artisan serve` (l'app su `http://127.0.0.1:8000`) e `npm run dev` (Vite: CSS e JavaScript).
+- Per lavorare servono due terminali: `php artisan serve` dal terminale di Ubuntu (l'app su `http://127.0.0.1:8000`, raggiungibile da Windows; con `DB_DATABASE="/mnt/c/Users/lorer/Documents/Tab Manager/database.sqlite"` davanti al comando per usare l'archivio vero) e `npm run dev` da Windows (Vite: CSS e JavaScript).
 
 ### Avvio come app desktop (finestra dedicata)
 Per l'uso di tutti i giorni l'app si apre dal collegamento **"Tab Manager"** (sul desktop e nella cartella del progetto), senza terminali: una finestra tutta sua, senza barra degli indirizzi, schede o menu, con titolo e icona di Tab Manager (anche nella barra delle applicazioni).
 - **Perché non un programma compilato** (per esempio con NativePHP/Electron): un eseguibile costruito da noi non sarebbe firmato e Smart App Control lo bloccherebbe. Si usa invece Microsoft Edge, già installato e firmato, in "modalità app" (`--app=`), che mostra solo la pagina. Nessuna libreria in più.
 - File nella cartella `windows/` del progetto (oltre a `setup.ps1` e `uninstall.ps1`, vedi "Installazione su un altro computer" e "Disinstallazione"):
-  - `tab-manager.ps1`: script di avvio. Usa il PHP di php.new (`%USERPROFILE%\.config\herd-lite\bin\php.exe`) anche se sul computer c'è un altro PHP, e solo se manca quello nel PATH; trova Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server. Se il server è già acceso (seconda finestra), apre solo la finestra. Prima di avviare il server lancia `php artisan tab:backup --daily` (copia di sicurezza del giorno, vedi "Archivio dei brani e copie di sicurezza"; un suo errore non blocca l'app). Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
+  - `tab-manager.ps1`: script di avvio. **Quale PHP**: se c'è WSL con PHP 8.4.1 o più recente (controllo con `wsl.exe --exec php -r ...`), usa sempre quello, così l'app si apre anche quando Smart App Control blocca i `php.exe`; altrimenti il PHP di php.new (`%USERPROFILE%\.config\herd-lite\bin\php.exe`) anche se sul computer c'è un altro PHP, e solo se manca quello nel PATH. Con WSL i comandi partono con `wsl.exe --cd <cartella> --exec php ...`; il percorso dell'archivio nel `.env` (`C:/Users/...`) viene tradotto per Linux (`/mnt/c/Users/...`) e passato a PHP con `env DB_DATABASE=...` (una variabile d'ambiente vince sul `.env`); il server usa anche OPcache (`-d opcache.enable_cli=1`) e WSL inoltra a Windows la porta aperta su 127.0.0.1. Poi trova Edge; avvia di nascosto il server web integrato di PHP sulla **porta 8765** (`php -S 127.0.0.1:8765` dalla cartella `public` con il router di Laravel, come fa `php artisan serve`; porta diversa dalla 8000 dello sviluppo), aspetta che risponda (fino a 30 secondi: la prima volta WSL impiega qualche secondo ad accendersi) e apre Edge con `--app=http://127.0.0.1:8765` e un profilo tutto suo (`--user-data-dir=%LOCALAPPDATA%\TabManager\Edge`, finestra 1280 × 900). Quando non resta nessun processo di Edge con quel profilo (finestra chiusa), spegne il server (con WSL anche con `pkill` dentro Linux, perché chiudere `wsl.exe` non basta sempre). Se il server è già acceso (seconda finestra), apre solo la finestra. Prima di avviare il server lancia `php artisan tab:backup --daily` (copia di sicurezza del giorno, vedi "Archivio dei brani e copie di sicurezza"; un suo errore non blocca l'app). Gli errori (PHP o Edge non trovati, interfaccia non compilata, server che non parte) compaiono in una finestra di messaggio;
   - `install-shortcut.ps1`: crea il collegamento `Tab Manager.lnk` sul desktop e nella cartella del progetto (da eseguire una volta, e di nuovo se si sposta la cartella del progetto, con `powershell -NoProfile -File windows\install-shortcut.ps1`: funziona sia da PowerShell sia dal Prompt dei comandi, dove scrivere solo il nome del file `.ps1` lo aprirebbe nel Blocco note). Il collegamento lancia `conhost.exe --headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows\tab-manager.ps1`, cioè lo script senza nessuna finestra del terminale (`-ExecutionPolicy Bypass` vale solo per quell'avvio: l'app parte anche dove PowerShell non esegue script, impostazione predefinita `Restricted`), con l'icona `windows\tab-manager.ico`. Il collegamento contiene percorsi assoluti di questo computer, quindi quello nella cartella del progetto è nel `.gitignore` (`/Tab Manager.lnk`);
   - `tab-manager.ico`: l'icona (16–256 px).
 - Gli script sono salvati in UTF-8 **con BOM**: Windows PowerShell 5.1 senza BOM leggerebbe male le lettere accentate. Girano con la Execution Policy `RemoteSigned` già impostata (sono file locali).
 - L'interfaccia usa i file compilati da **`npm run build`** (cartella `public/build`), da rifare dopo ogni modifica al codice. Se `npm run dev` è acceso, la finestra usa quello. Il file `public/hot` rimasto da un `npm run dev` chiuso male (server di Vite spento) viene tolto dallo script, altrimenti le pagine resterebbero senza stile.
 
-### Installazione su un altro computer (tester)
-Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (istruzioni per lui nel `README.md`):
+### Installazione su un altro computer
+Su un computer senza l'ambiente di sviluppo l'app si installa con un doppio clic, senza comandi (istruzioni nel `README.md`):
 1. su GitHub **Code → Download ZIP**;
 2. prima di estrarre: tasto destro sullo ZIP → Proprietà → **Sblocca**. Windows segna i file scaricati da Internet ("Mark of the Web") e i file estratti ereditano il segno; con Smart App Control attivo i file eseguibili segnati (`.cmd`, `.ps1`, `.lnk`, …) vengono bloccati senza possibilità di aggirare il blocco. Un `.exe` costruito da noi sarebbe bloccato comunque, perché non firmato: per questo l'"eseguibile" è un file di comandi;
 3. "Estrai tutto" e doppio clic su **`Installa Tab Manager.cmd`** (nella cartella principale del progetto). Il file avvia `windows\setup.ps1` con `-ExecutionPolicy Bypass` (solo per quell'avvio) e alla fine resta aperto con `pause`, così si leggono eventuali errori.
 
 `windows\setup.ps1` (installazione **e** aggiornamento: si può rilanciare quando si vuole):
 - toglie il segno di Internet ai file dell'app (`Unblock-File`), nel caso lo ZIP non fosse stato sbloccato;
-- **PHP e Composer**: l'app usa **sempre il PHP di php.new**, anche se sul computer c'è già un altro PHP (per esempio quello di XAMPP), così le versioni non vanno in conflitto. Se `%USERPROFILE%\.config\herd-lite\bin\php.exe` o Composer mancano, li installa con il comando ufficiale di php.new (`https://php.new/install/windows/8.5`), in un PowerShell separato: php.new usa una cartella sua e non tocca l'altro PHP. Per i comandi dell'installazione quella cartella è messa **per prima nel PATH** (solo in quel processo, le impostazioni del PC non cambiano). Controlla che PHP sia almeno **8.4**, la versione minima richiesta dalle librerie in `composer.lock`;
+- **PHP e Composer**: se c'è WSL con PHP 8.4.1 o più recente, usa PHP e Composer di WSL, come lo script di avvio (se in WSL manca Composer si ferma e dice di installarlo). I comandi partono con `wsl.exe --cd <cartella dell'app> --exec ...`: `php` riceve il percorso dell'archivio tradotto per Linux (`env DB_DATABASE=/mnt/c/...`), `composer` l'opzione `--ignore-platform-req=ext-gd` (il PHP di WSL di solito non ha `gd`, che PHPWord chiede solo per le immagini). Senza WSL l'app usa **sempre il PHP di php.new**, anche se sul computer c'è già un altro PHP (per esempio quello di XAMPP), così le versioni non vanno in conflitto. Se `%USERPROFILE%\.config\herd-lite\bin\php.exe` o Composer mancano, li installa con il comando ufficiale di php.new (`https://php.new/install/windows/8.5`), in un PowerShell separato: php.new usa una cartella sua e non tocca l'altro PHP. Per i comandi dell'installazione quella cartella è messa **per prima nel PATH** (solo in quel processo, le impostazioni del PC non cambiano). Controlla che PHP sia almeno **8.4**, la versione minima richiesta dalle librerie in `composer.lock`;
 - **Node.js**: se manca lo installa con `winget install OpenJS.NodeJS.LTS` (Windows chiede una conferma); serve solo a compilare l'interfaccia;
 - **`.env`**: solo se non esiste, lo crea copiando `.env.example`;
 - **archivio dei brani** in **`Documenti\Tab Manager\database.sqlite`** (cartella Documenti da `[Environment]::GetFolderPath('MyDocuments')`, quindi anche se è su OneDrive), vedi "Archivio dei brani e copie di sicurezza":
@@ -85,7 +85,7 @@ Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (i
 ### Disinstallazione
 Doppio clic su **`Disinstalla Tab Manager.cmd`** (nella cartella principale): avvia `windows\uninstall.ps1` come l'installatore avvia `setup.ps1` (`-ExecutionPolicy Bypass` solo per quell'avvio, `pause` alla fine). Lo script:
 - chiede conferma (S/N) prima di fare qualsiasi cosa;
-- chiude l'app se è aperta: i processi di Edge con il profilo `%LOCALAPPDATA%\TabManager\Edge` e il server PHP sulla porta 8765;
+- chiude l'app se è aperta: i processi di Edge con il profilo `%LOCALAPPDATA%\TabManager\Edge` e il server PHP sulla porta 8765 (`php.exe` o `wsl.exe`, e con WSL anche `pkill` dentro Linux);
 - cancella i collegamenti `Tab Manager.lnk` sul desktop e nella cartella dell'app (quello sul desktop solo se è davvero di Tab Manager, cioè se lancia `tab-manager.ps1`);
 - cancella il profilo di Edge dell'app (riprova per qualche secondo se Edge tiene ancora i file aperti);
 - **non tocca mai l'archivio dei brani né le sue copie** (`Documenti\Tab Manager`): alla fine dice dov'è (da `DB_DATABASE` nel `.env`). Se l'archivio è dentro la cartella dell'app (succede solo se `setup.ps1` non è stato eseguito), avvisa di rilanciare l'installazione o di copiarlo prima di cancellare la cartella. Chi vuole davvero cancellare i brani lo fa a mano. La cartella `%LOCALAPPDATA%\TabManager` (dove resta solo il profilo di Edge) viene tolta se resta vuota;
@@ -110,7 +110,7 @@ L'archivio è indipendente dall'app: si può cancellare, riscaricare, aggiornare
   
   I `.docx` servono per leggere e stampare (l'app non li sa rileggere); per ripristinare serve `database.sqlite`.
 - **Copie coerenti**: le copie del database si fanno con `VACUUM INTO` di SQLite, corrette anche se l'app sta scrivendo (una semplice copia del file potrebbe prenderne una versione a metà).
-- **Ripristino** (spiegato nel `README.md` e nel `LEGGIMI.txt`): chiudere l'app e mettere il `database.sqlite` del backup (o una copia automatica rinominata) in `Documenti\Tab Manager`, al posto di quello esistente. Su un altro computer: prima installare l'app e aprirla una volta. Nell'app non c'è un pulsante "Ripristina" (vedi sezione 9, sviluppi futuri).
+- **Ripristino** (spiegato nel `README.md` e nel `LEGGIMI.txt`): chiudere l'app e mettere il `database.sqlite` del backup (o una copia automatica rinominata) in `Documenti\Tab Manager`, al posto di quello esistente. Su un altro computer: prima installare l'app e aprirla una volta. Nell'app non c'è un pulsante "Ripristina".
 - Classe **`App\Services\TabBackup`**: `databasePath()`, `folder()` (la cartella `Backup` accanto al database), `hasToday()`, `snapshot($label)` (copia datata + pulizia delle più vecchie), `zip()` (crea lo ZIP in un file temporaneo e ne restituisce il percorso), `zipName()`. Lo ZIP si crea con `ZipArchive` di PHP, già presente perché serve anche a PHPWord (anche il .docx è uno ZIP): nessuna libreria in più.
 
 In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anche nello ZIP di GitHub): `cmd.exe` e PowerShell 5.1 le vogliono così.
@@ -127,7 +127,6 @@ In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anch
 | JavaScript | Nessun'altra libreria | Oltre all'editor: `resources/js/tab-pages.js` per mostrare il foglio su pagine A4 (form e anteprima) e `resources/js/app.js` (poche righe) per l'interruttore del tema e il tasto Esc nell'anteprima. Tutto il resto (ordinamento, riga cliccabile, modale di conferma) funziona senza JavaScript |
 | Database | **SQLite** | File unico `Documenti\Tab Manager\database.sqlite`, fuori dalla cartella dell'app (sezione 2, "Archivio dei brani e copie di sicurezza") |
 | Export Word | **PHPWord** (`phpoffice/phpword`) | Unica dipendenza PHP aggiuntiva |
-| Test | **Pest** | Predefinito in Laravel |
 | App desktop | **Microsoft Edge** in modalità app + script **PowerShell** | Finestra dedicata e collegamento sul desktop (sezione 2); nessuna dipendenza in più |
 | Supporto sviluppo | **Laravel Boost** (`laravel/boost`, solo `require-dev`) | Installato da `laravel new`; strumenti per gli assistenti AI. I suoi file di linee guida (`AGENTS.md`, `CLAUDE.md`) non sono usati e non sono nel progetto. Non fa parte dell'app |
 
@@ -372,36 +371,14 @@ Il seeder parte da solo solo quando l'installazione crea un database nuovo. Per 
 
 ---
 
-## 9. Creazione del progetto, test e sviluppi futuri
-
-### Creazione del progetto
-- `laravel new tab-manager`: nessuno starter kit, test con Pest, database SQLite. Il `.gitignore` è quello di Laravel 13;
+## 9. Creazione del progetto
+- `laravel new tab-manager`: nessuno starter kit, database SQLite. Il `.gitignore` è quello di Laravel 13;
 - `composer require phpoffice/phpword`;
 - `npm install @tiptap/core @tiptap/pm @tiptap/starter-kit @tiptap/extension-text-style @tiptap/extension-text-align @tiptap/extension-highlight`;
 - versioni: Laravel Framework 13.44.1, `phpoffice/phpword` 1.4.0 (con `phpoffice/math` 0.3.0), Tiptap 3.x;
 - `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it` (`DB_DATABASE` lo scrive `windows\setup.ps1`, sezione 2).
 
 Le classi si creano con i comandi di Laravel: `php artisan make:model Song -m -s`, `make:enum Enums/Instrument --string`, `make:controller SongController --resource --model=Song`, `make:request SongRequest`, `make:class Services/TabDocxGenerator`.
-
-### Test automatici (Pest, da scrivere)
-In `tests/Feature`, con un database di test:
-- creazione di un brano valido (redirect all'anteprima e record nel database);
-- validazione: campi obbligatori mancanti, `instrument` non valido, numero di corde non ammesso per lo strumento;
-- modifica ed eliminazione di un brano;
-- download del `.docx`: risposta 200 e content-type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`;
-- backup ZIP: risposta 200, content-type `application/zip`, con i `.docx` e `database.sqlite`.
-
-Per creare i brani nei test serve una factory (`php artisan make:factory SongFactory`). Il test di esempio di Laravel (`tests/Feature/ExampleTest.php`) va sostituito: la home `/` fa un redirect, quindi non risponde 200.
-
-### Possibili sviluppi futuri
-- Pulsante "Ripristina" per caricare un backup dall'app
-- Avviso del browser (`beforeunload`) uscendo dal form con modifiche non salvate anche dai link dell'intestazione o chiudendo la finestra
-- Tabulatura sempre intera tra due pagine (righe tenute insieme anche nel Word)
-- Duplicare un brano; filtro per strumento nell'elenco; stampa diretta dall'anteprima
-- Trasposizione automatica di semitoni
-- Esportazione anche in PDF o in .txt
-- Importazione da MusicXML / Guitar Pro
-- Editor battuta per battuta
 
 ---
 

@@ -3,7 +3,7 @@
 | Tab Manager – disinstallazione (lo avvia "Disinstalla Tab Manager.cmd")
 |--------------------------------------------------------------------------
 | Toglie da questo computer ciò che l'installazione ha creato fuori dalla cartella dell'app:
-|  1. chiude l'app, se è aperta (finestra di Edge e server PHP sulla porta 8765);
+|  1. chiude l'app, se è aperta (finestra di Edge e server PHP sulla porta 8765, anche in WSL);
 |  2. cancella il collegamento "Tab Manager" sul desktop e quello nella cartella dell'app;
 |  3. cancella il profilo di Edge della finestra dell'app (%LOCALAPPDATA%\TabManager\Edge);
 |
@@ -68,10 +68,17 @@ try {
     Write-Step "Chiudo Tab Manager, se è aperto..."
     $processes = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         ($_.Name -eq 'msedge.exe' -and $_.CommandLine -like "*$edgeProfile*") -or
-        ($_.Name -eq 'php.exe' -and $_.CommandLine -like "*127.0.0.1:$port*")
+        ($_.Name -in @('php.exe', 'wsl.exe') -and $_.CommandLine -like "*127.0.0.1:$port*")
     }
     foreach ($process in $processes) {
         Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    # Se l'app usa il PHP di WSL, il server gira dentro Linux: lo si spegne da lì.
+    $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
+    if (Test-Path $wsl) {
+        $ErrorActionPreference = 'Continue'
+        & $wsl --exec pkill -f "php .*-S 127.0.0.1:$port" 2>$null | Out-Null
+        $ErrorActionPreference = 'Stop'
     }
 
     # 2. Collegamenti: sul desktop solo se è davvero quello di Tab Manager.

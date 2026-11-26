@@ -3,11 +3,15 @@
 | Tab Manager – installazione e aggiornamento (lo avvia "Installa Tab Manager.cmd")
 |--------------------------------------------------------------------------
 | Prepara tutto ciò che serve per usare l'app su questo computer:
-|  1. PHP e Composer di php.new (come nella documentazione di Laravel), se mancano. Tab Manager usa
-|     sempre questo PHP, anche se sul computer ce n'è già un altro (per esempio quello di XAMPP):
-|     php.new lo installa nella sua cartella (%USERPROFILE%\.config\herd-lite\bin) senza toccare
-|     l'altro, e per i comandi di questa installazione la sua cartella viene messa per prima nel PATH.
-|     Così le due versioni non vanno in conflitto;
+|  1. PHP e Composer. Se nel computer c'è WSL (Ubuntu) con PHP 8.4 o più recente e Composer, usa
+|     quelli: Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi
+|     funzionano anche quando Windows blocca il php.exe (l'app poi usa lo stesso PHP, vedi
+|     tab-manager.ps1). Altrimenti PHP e Composer di php.new (come nella documentazione di Laravel),
+|     installati se mancano. Tab Manager usa sempre questo PHP, anche se sul computer ce n'è già un
+|     altro (per esempio quello di XAMPP): php.new lo installa nella sua cartella
+|     (%USERPROFILE%\.config\herd-lite\bin) senza toccare l'altro, e per i comandi di questa
+|     installazione la sua cartella viene messa per prima nel PATH. Così le due versioni non vanno
+|     in conflitto;
 |  2. Node.js, se manca (con winget, già presente in Windows 11);
 |  3. le librerie PHP (composer install) e JavaScript (npm install);
 |  4. l'interfaccia compilata (npm run build);
@@ -32,6 +36,8 @@ $database = Join-Path $dataDir 'database.sqlite'
 $backupDir = Join-Path $dataDir 'Backup'
 $legacyDatabase = Join-Path $env:LOCALAPPDATA 'TabManager\database.sqlite'   # posizione delle prime versioni
 $herdBin = Join-Path $env:USERPROFILE '.config\herd-lite\bin'
+$wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
+$useWsl = $false
 Set-Location $root
 
 function Write-Step([string] $text) {
@@ -58,6 +64,48 @@ function Invoke-Checked([string] $file, [string[]] $arguments) {
     & $file @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "Il comando '$file $($arguments -join ' ')' non è riuscito (codice $LASTEXITCODE)."
+    }
+}
+
+# Vero se WSL c'è e il comando dà codice 0 (per esempio: php con la versione giusta, composer).
+function Test-Wsl([string[]] $command) {
+    if (-not (Test-Path $wsl)) {
+        return $false
+    }
+    $ErrorActionPreference = 'Continue'   # un messaggio di errore di wsl.exe non deve fermare lo script
+    try {
+        & $wsl --exec @command 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    } catch {
+        return $false
+    }
+}
+
+# Un percorso di Windows visto da WSL: C:\Users\... → /mnt/c/Users/...
+function ConvertTo-WslPath([string] $path) {
+    $full = [System.IO.Path]::GetFullPath($path)
+    if ($full -notmatch '^([A-Za-z]):\\(.*)$') {
+        throw "WSL non può raggiungere questo percorso: $path"
+    }
+    return '/mnt/' + $Matches[1].ToLower() + '/' + ($Matches[2] -replace '\\', '/')
+}
+
+# php e composer: in WSL (nella cartella dell'app, con il percorso dell'archivio tradotto per
+# Linux: una variabile d'ambiente vince sul .env) oppure quelli di php.new.
+function Invoke-Php([string[]] $arguments) {
+    if ($useWsl) {
+        Invoke-Checked $wsl (@('--cd', $root, '--exec', 'env', "DB_DATABASE=$(ConvertTo-WslPath $database)", 'php') + $arguments)
+    } else {
+        Invoke-Checked 'php' $arguments
+    }
+}
+
+function Invoke-Composer([string[]] $arguments) {
+    if ($useWsl) {
+        # Il PHP di WSL di solito non ha l'estensione gd, che PHPWord chiede solo per le immagini.
+        Invoke-Checked $wsl (@('--cd', $root, '--exec', 'composer') + $arguments + @('--ignore-platform-req=ext-gd'))
+    } else {
+        Invoke-Checked 'composer' $arguments
     }
 }
 
@@ -98,9 +146,16 @@ try {
 
     Update-Path
 
-    # 1. PHP e Composer di php.new (anche se sul computer c'è già un altro PHP)
+    # 1. PHP e Composer: quelli di WSL, se ci sono; altrimenti quelli di php.new
+    #    (anche se sul computer c'è già un altro PHP)
     $herdPhp = Join-Path $herdBin 'php.exe'
-    if (-not (Test-Path $herdPhp) -or -not (Test-Command 'composer')) {
+    if (Test-Wsl @('php', '-r', 'exit(PHP_VERSION_ID >= 80401 ? 0 : 1);')) {
+        if (-not (Test-Wsl @('composer', '--version'))) {
+            throw "In WSL c'è PHP ma non Composer.`nInstallalo in Ubuntu (https://getcomposer.org/download) e rilancia l'installazione."
+        }
+        $useWsl = $true
+        Write-Host "PHP $(& $wsl --exec php -r 'echo PHP_VERSION;') (WSL)"
+    } elseif (-not (Test-Path $herdPhp) -or -not (Test-Command 'composer')) {
         Write-Step 'Installo PHP e Composer (php.new), accanto a eventuali altre versioni di PHP...'
         # Comando ufficiale di php.new, in un PowerShell separato.
         $phpNew = "Set-ExecutionPolicy Bypass -Scope Process -Force; " +
@@ -112,12 +167,14 @@ try {
             throw "Non sono riuscito a installare PHP e Composer.`nInstallali da https://php.new e rilancia l'installazione."
         }
     }
-    # Le librerie del progetto chiedono PHP 8.4 o più recente.
-    & $herdPhp -r "exit(version_compare(PHP_VERSION, '8.4.0', '<') ? 1 : 0);"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Serve PHP 8.4 o più recente (trovato: $(& $herdPhp -r 'echo PHP_VERSION;')).`nAggiornalo rilanciando il comando di https://php.new e poi rilancia l'installazione."
+    if (-not $useWsl) {
+        # Le librerie del progetto chiedono PHP 8.4 o più recente.
+        & $herdPhp -r "exit(version_compare(PHP_VERSION, '8.4.0', '<') ? 1 : 0);"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Serve PHP 8.4 o più recente (trovato: $(& $herdPhp -r 'echo PHP_VERSION;')).`nAggiornalo rilanciando il comando di https://php.new e poi rilancia l'installazione."
+        }
+        Write-Host "PHP $(& $herdPhp -r 'echo PHP_VERSION;') ($herdPhp)"
     }
-    Write-Host "PHP $(& $herdPhp -r 'echo PHP_VERSION;') ($herdPhp)"
 
     # 2. Node.js (serve solo per compilare l'interfaccia)
     if (-not (Test-Command 'npm.cmd')) {
@@ -188,10 +245,10 @@ try {
 
     # 5. Librerie
     Write-Step 'Scarico le librerie PHP (composer install)...'
-    Invoke-Checked 'composer' @('install', '--no-interaction', '--no-progress')
+    Invoke-Composer @('install', '--no-interaction', '--no-progress')
 
     if ($newEnv -or -not (Get-EnvValue 'APP_KEY')) {
-        Invoke-Checked 'php' @('artisan', 'key:generate', '--force')
+        Invoke-Php @('artisan', 'key:generate', '--force')
     }
 
     Write-Step "Scarico le librerie JavaScript e compilo l'interfaccia (npm)..."
@@ -204,12 +261,12 @@ try {
         Write-Step "Creo il database dei brani: $database"
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $database) | Out-Null
         New-Item -ItemType File -Path $database | Out-Null
-        Invoke-Checked 'php' @('artisan', 'migrate', '--force')
-        Invoke-Checked 'php' @('artisan', 'db:seed', '--force')
+        Invoke-Php @('artisan', 'migrate', '--force')
+        Invoke-Php @('artisan', 'db:seed', '--force')
     } else {
         Write-Step "Copia di sicurezza dell'archivio, poi aggiorno il database (i brani restano)..."
-        Invoke-Checked 'php' @('artisan', 'tab:backup', "--label=prima dell'aggiornamento")
-        Invoke-Checked 'php' @('artisan', 'migrate', '--force')
+        Invoke-Php @('artisan', 'tab:backup', "--label=prima dell'aggiornamento")
+        Invoke-Php @('artisan', 'migrate', '--force')
     }
 
     # 7. Collegamenti e avvio
