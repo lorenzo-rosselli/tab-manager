@@ -162,7 +162,7 @@ React, Vue, Livewire, Inertia, Alpine.js, starter kit con autenticazione, MySQL/
 | `show_instrument` | `boolean`, default `false` | sì | Scrivere lo strumento nella seconda riga del foglio |
 | `show_band` | `boolean`, default `false` | sì | Scrivere il gruppo nella seconda riga del foglio |
 | `tab` | `longText` | sì | Il **foglio**: documento formattato in formato JSON di Tiptap (vedi sotto) |
-| `created_at` / `updated_at` | `timestamps()` | auto | — |
+| `created_at` / `updated_at` | `timestamps()` | auto | Data di creazione (non mostrata) e dell'ultimo salvataggio che ha cambiato qualcosa (colonna "Data ultimo aggiornamento" dell'elenco) |
 
 La tabella è creata da `2026_11_24_182440_create_songs_table.php`; la colonna `strings` la aggiunge una seconda migration, `2026_11_25_150000_add_strings_to_songs_table.php`. Le nuove colonne si aggiungono sempre così, con una migration nuova: `php artisan migrate` (lanciato anche da `Installa Tab Manager.cmd`) aggiorna i database che hanno già dei brani senza cancellarli.
 
@@ -245,7 +245,7 @@ Route::get('backup', BackupController::class)->name('backup');
 - `store` e `update` salvano `$request->songData()` (vedi sezione 6) e fanno un redirect all'anteprima con un **messaggio flash** (`->with('status', ...)`): "Brano salvato.", "Modifiche salvate."; `destroy` torna all'elenco con "Brano eliminato.".
 - `index(Request $request)`:
   - **ricerca** `?q=testo`: mostra i brani che contengono il testo nell'artista, nel titolo, nel gruppo o nel nome dello strumento (`where`/`orWhere` con `like`, raggruppati in un `where(function ...)`). Lo strumento è salvato come `bass`/`guitar`/`voice`: si cercano i casi di `Instrument` la cui etichetta ("Basso", "Chitarra", "Voce") contiene il testo e si aggiunge `orWhereIn('instrument', ...)`, così "basso" o "chit" trovano i brani giusti;
-  - **ordinamento multiplo** `?sort=artist,-title`: lista di colonne separate da virgole, nell'ordine di priorità; il `-` davanti indica l'ordine decrescente. Chiavi ammesse (costante `SORTABLE`, che fa da lista bianca e dà l'ordine delle colonne): `artist`, `title`, `band`, `instrument`, `date` (→ `created_at`). Senza `sort` l'elenco va dal più recente. In SQLite i gruppi vuoti (NULL) vengono prima in ordine crescente;
+  - **ordinamento multiplo** `?sort=artist,-title`: lista di colonne separate da virgole, nell'ordine di priorità; il `-` davanti indica l'ordine decrescente. Chiavi ammesse (costante `SORTABLE`, che fa da lista bianca e dà l'ordine delle colonne): `artist`, `title`, `band`, `instrument`, `date` (→ `updated_at`). **Ordine predefinito**: senza `sort` (anche durante una ricerca) l'elenco va per `updated_at` decrescente, `latest('updated_at')`: in cima il brano modificato più di recente. Non compare nella riga "Ordinato per:" né con le frecce delle intestazioni: è l'ordine normale della tabella, e togliendo tutti gli ordinamenti si torna lì. In SQLite i gruppi vuoti (NULL) vengono prima in ordine crescente;
   - metodi privati: `parseSorts()` (testo → array colonna => direzione), `sortParam()` (l'inverso), `sortColumns()` (per ogni intestazione: etichetta, stato attuale, posizione e link del clic successivo).
 - `download(Song $song, TabDocxGenerator $generator)`: vedi sezione 7.
 
@@ -268,7 +268,7 @@ Route::get('backup', BackupController::class)->name('backup');
 - `songs/index.blade.php`:
   - in alto: casella di ricerca "Cerca artista, titolo, gruppo o strumento" (form GET con icona lente e icona per annullare la ricerca) e, dopo un separatore, l'icona **Backup** (`archive-box`, link alla rotta `backup`: scarica lo ZIP con tutti i brani e il database). Ricerca e ordinamento si conservano a vicenda (campo nascosto `sort` nel form, `q` nei link delle intestazioni);
   - **sopra la tabella**, solo quando c'è almeno un ordinamento: la riga "Ordinato per:" con le colonne ordinate nell'ordine di priorità (etichette a pillola con la freccia su/giù) e l'icona ✕ "Azzera ordinamento", che toglie tutti gli ordinamenti e mantiene la ricerca;
-  - tabella con Artista, Titolo, Gruppo ("—" se vuoto), Strumento, Data e Azioni (Modifica, Scarica .docx, Elimina);
+  - tabella con Artista, Titolo, Gruppo ("—" se vuoto), Strumento, **Data ultimo aggiornamento** (`updated_at`, `d/m/Y`) e Azioni (Modifica, Scarica .docx, Elimina);
   - **intestazioni ordinabili**: ogni clic su una colonna fa crescente → decrescente → tolta; le colonne si accumulano nell'ordine di scelta. La colonna ordinata mostra una freccia (su/giù) e, se le colonne ordinate sono più di una, il numero di priorità. Il tooltip dice cosa farà il clic successivo;
   - **riga cliccabile**: cliccando ovunque su una riga si apre l'anteprima del brano. Senza JavaScript: il link del titolo ha uno pseudo-elemento `after:absolute after:inset-0` che copre tutta la riga (`<tr class="relative">`); la cella delle azioni sta sopra (`relative z-10`), così le icone restano cliccabili;
   - messaggi per elenco vuoto e per ricerca senza risultati.

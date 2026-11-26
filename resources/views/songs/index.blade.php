@@ -107,7 +107,7 @@
                             </td>
                             <td class="px-4 py-3">{{ $song->band ?? '—' }}</td>
                             <td class="px-4 py-3">{{ $song->instrument->label() }}</td>
-                            <td class="px-4 py-3">{{ $song->created_at->format('d/m/Y') }}</td>
+                            <td class="px-4 py-3">{{ $song->updated_at->format('d/m/Y') }}</td>
                             <td class="relative z-10 px-4 py-3">
                                 {{-- Icone: title = tooltip del browser, aria-label = testo per i lettori di schermo --}}
                                 <div class="flex items-center justify-end gap-1">
