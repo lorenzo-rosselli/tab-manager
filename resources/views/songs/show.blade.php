@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', $song->title)
-
 @section('content')
     {{-- data-escape-to: il tasto Esc porta all'elenco (vedi resources/js/app.js) --}}
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4" data-escape-to="{{ route('songs.index') }}">

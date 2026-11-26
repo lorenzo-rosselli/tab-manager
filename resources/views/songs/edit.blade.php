@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Modifica: '.$song->title)
-
 @section('content')
     <form method="POST" action="{{ route('songs.update', $song) }}">
         @csrf

@@ -330,10 +330,20 @@ try {
         }
     }
 
+    # Finestra di 1280 × 900 al centro dello schermo principale. L'area di lavoro (lo schermo senza la
+    # barra delle applicazioni) è in unità "logiche", come le misure di Edge, così il centro è giusto
+    # anche con lo schermo ingrandito (es. 125%). Se lo schermo è più piccolo, la finestra lo riempie.
+    $area = [System.Windows.SystemParameters]::WorkArea
+    $width = [int][Math]::Min(1280, $area.Width)
+    $height = [int][Math]::Min(900, $area.Height)
+    $left = [int]($area.Left + ($area.Width - $width) / 2)
+    $top = [int]($area.Top + ($area.Height - $height) / 2)
+
     Start-Process -FilePath $edge -ArgumentList @(
         "--app=$url",
         "--user-data-dir=`"$edgeProfile`"",
-        '--window-size=1280,900',
+        "--window-size=$width,$height",
+        "--window-position=$left,$top",
         '--no-first-run',
         '--no-default-browser-check'
     )

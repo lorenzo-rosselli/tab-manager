@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@section('title', 'Nuovo brano')
-
 @section('content')
     <form method="POST" action="{{ route('songs.store') }}">
         @csrf
