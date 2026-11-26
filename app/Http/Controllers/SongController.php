@@ -17,9 +17,9 @@ class SongController extends Controller
      * Colonne ordinabili dell'elenco: chiave usata nell'indirizzo => [colonna del database, etichetta].
      */
     private const SORTABLE = [
-        'artist' => ['artist', 'Artista'],
+        'artist' => ['artist', 'Artista originale'],
         'title' => ['title', 'Titolo'],
-        'band' => ['band', 'Gruppo'],
+        'band' => ['band', 'Il mio gruppo'],
         'instrument' => ['instrument', 'Strumento'],
         'date' => ['updated_at', 'Data ultimo aggiornamento'],
     ];

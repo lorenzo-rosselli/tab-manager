@@ -29,7 +29,7 @@
 <div class="space-y-6">
     <div class="grid gap-6 sm:grid-cols-2">
         <div>
-            <label for="artist" class="mb-1 block text-sm font-medium">Artista</label>
+            <label for="artist" class="mb-1 block text-sm font-medium">Artista originale</label>
             <input type="text" id="artist" name="artist" value="{{ old('artist', $song->artist) }}" class="{{ $field }}">
             @error('artist') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
@@ -40,8 +40,8 @@
             @error('title') <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
         </div>
 
-        {{-- Ordine dei campi: Artista, Titolo / Strumento, Corde / Gruppo.
-             Accanto a Strumento e Gruppo: spunta per scriverli sul foglio, sotto "Artista - Titolo".
+        {{-- Ordine dei campi: Artista originale, Titolo / Strumento, Corde / Il mio gruppo.
+             Accanto a Strumento e Il mio gruppo: spunta per scriverli sul foglio, sotto "Artista - Titolo".
              Il campo nascosto "0" viene inviato se la casella è vuota. --}}
         <div>
             <div class="mb-1 flex items-center justify-between gap-4">
@@ -88,7 +88,7 @@
 
         <div>
             <div class="mb-1 flex items-center justify-between gap-4">
-                <label for="band" class="text-sm font-medium">Gruppo <span class="text-gray-500 dark:text-gray-400">(facoltativo)</span></label>
+                <label for="band" class="text-sm font-medium">Il mio gruppo <span class="text-gray-500 dark:text-gray-400">(facoltativo)</span></label>
                 <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                     <input type="hidden" name="show_band" value="0">
                     <input type="checkbox" id="show_band" name="show_band" value="1" class="{{ $check }}"

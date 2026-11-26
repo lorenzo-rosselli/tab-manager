@@ -11,7 +11,7 @@
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Strumento: {{ $song->instrument->label() }}
                 @if ($song->band)
-                    – Gruppo: {{ $song->band }}
+                    – Il mio gruppo: {{ $song->band }}
                 @endif
             </p>
         </div>
