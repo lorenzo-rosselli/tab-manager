@@ -18,6 +18,24 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Disattiva la "Modifica rapida" di questa finestra del terminale. Con la modifica rapida accesa, un
+# clic nella finestra inizia una selezione di testo e Windows mette in pausa lo script finché non si
+# preme un tasto: sembra bloccato. Vale solo per questa finestra; se non riesce, si va avanti lo stesso.
+try {
+    Add-Type -Namespace TabManager -Name ConsoleMode -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr hConsole, out uint mode);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr hConsole, uint mode);
+'@
+    $consoleInput = [TabManager.ConsoleMode]::GetStdHandle(-10)   # STD_INPUT_HANDLE
+    $consoleMode = [uint32] 0
+    if ([TabManager.ConsoleMode]::GetConsoleMode($consoleInput, [ref] $consoleMode)) {
+        # toglie ENABLE_QUICK_EDIT_MODE (0x40); ENABLE_EXTENDED_FLAGS (0x80) serve perché la modifica valga
+        [void] [TabManager.ConsoleMode]::SetConsoleMode($consoleInput, ($consoleMode -band -bnot 0x40) -bor 0x80)
+    }
+} catch {
+}
+
 $root = Split-Path -Parent $PSScriptRoot   # cartella dell'app
 $appDataDir = Join-Path $env:LOCALAPPDATA 'TabManager'   # solo il profilo di Edge
 $edgeProfile = Join-Path $appDataDir 'Edge'
@@ -78,7 +96,7 @@ try {
     $wsl = Join-Path $env:WINDIR 'System32\wsl.exe'
     if (Test-Path $wsl) {
         $ErrorActionPreference = 'Continue'
-        & $wsl --exec pkill -f "php .*-S 127.0.0.1:$port" 2>$null | Out-Null
+        $null | & $wsl --exec pkill -f "php .*-S 127.0.0.1:$port" 2>$null | Out-Null
         $ErrorActionPreference = 'Stop'
     }
 
@@ -135,11 +153,9 @@ try {
     Write-Host ''
     Write-Host "Ultimo passo, a mano: chiudi questa finestra e cancella la cartella dell'app"
     Write-Host "  $root"
-    Write-Host "(si apre ora in Esplora file, già selezionata)."
     Write-Host ''
     Write-Host 'PHP, Composer e Node.js restano installati, perché possono servire ad altri programmi.'
     Write-Host 'Se vuoi toglierli, le istruzioni sono nel README, alla voce "Disinstallare".'
-    Start-Process -FilePath 'explorer.exe' -ArgumentList "/select,`"$root`""
     exit 0
 } catch {
     Write-Host ''

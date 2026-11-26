@@ -60,7 +60,7 @@ Chi aveva una versione precedente con i brani in `%LOCALAPPDATA%\TabManager`: l'
 1. Nella cartella dell'app, doppio clic su **`Disinstalla Tab Manager.cmd`** e conferma con **S**.
    Chiude l'app e cancella i collegamenti **Tab Manager**.
 2. **I brani non vengono mai cancellati**: restano in `Documenti\Tab Manager`, con le copie di sicurezza. Se reinstalli, li ritrovi com'erano. Se vuoi davvero eliminarli, cancella tu quella cartella.
-3. Alla fine si apre Esplora file con la cartella dell'app selezionata: chiudi la finestra nera e **cancella la cartella**.
+3. Alla fine la finestra scrive dov'è la cartella dell'app: chiudi la finestra nera e **cancella la cartella** da Esplora file.
 
 PHP, Composer e Node.js restano installati, perché possono servire ad altri programmi. Se vuoi toglierli:
 - **PHP e Composer**: cancella la cartella `%USERPROFILE%\.config\herd-lite` (incolla il percorso nella barra di Esplora file), poi menu Start → **Modifica le variabili d'ambiente relative al tuo account** → **Path** → Modifica → togli la riga che finisce con `\.config\herd-lite\bin`;

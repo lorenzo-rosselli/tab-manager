@@ -35,6 +35,24 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Disattiva la "Modifica rapida" di questa finestra del terminale. Con la modifica rapida accesa, un
+# clic nella finestra inizia una selezione di testo e Windows mette in pausa lo script finché non si
+# preme un tasto: sembra bloccato. Vale solo per questa finestra; se non riesce, si va avanti lo stesso.
+try {
+    Add-Type -Namespace TabManager -Name ConsoleMode -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr hConsole, out uint mode);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr hConsole, uint mode);
+'@
+    $consoleInput = [TabManager.ConsoleMode]::GetStdHandle(-10)   # STD_INPUT_HANDLE
+    $consoleMode = [uint32] 0
+    if ([TabManager.ConsoleMode]::GetConsoleMode($consoleInput, [ref] $consoleMode)) {
+        # toglie ENABLE_QUICK_EDIT_MODE (0x40); ENABLE_EXTENDED_FLAGS (0x80) serve perché la modifica valga
+        [void] [TabManager.ConsoleMode]::SetConsoleMode($consoleInput, ($consoleMode -band -bnot 0x40) -bor 0x80)
+    }
+} catch {
+}
+
 $root = Split-Path -Parent $PSScriptRoot   # cartella dell'app
 $dataDir = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Tab Manager'   # anche con Documenti su OneDrive
 $database = Join-Path $dataDir 'database.sqlite'
@@ -66,7 +84,7 @@ function Test-Command([string] $name) {
 
 # Esegue un programma e si ferma se non riesce.
 function Invoke-Checked([string] $file, [string[]] $arguments) {
-    & $file @arguments
+    $null | & $file @arguments   # niente input dalla tastiera: il programma non resta mai in attesa
     if ($LASTEXITCODE -ne 0) {
         throw "Il comando '$file $($arguments -join ' ')' non è riuscito (codice $LASTEXITCODE)."
     }
@@ -79,7 +97,7 @@ function Test-Wsl([string[]] $command) {
     }
     $ErrorActionPreference = 'Continue'   # un messaggio di errore di wsl.exe non deve fermare lo script
     try {
-        & $wsl --exec @command 2>$null | Out-Null
+        $null | & $wsl --exec @command 2>$null | Out-Null
         return $LASTEXITCODE -eq 0
     } catch {
         return $false
@@ -159,7 +177,7 @@ try {
             throw "In WSL c'è PHP ma non Composer.`nInstallalo in Ubuntu (https://getcomposer.org/download) e rilancia l'installazione."
         }
         $useWsl = $true
-        Write-Host "PHP $(& $wsl --exec php -r 'echo PHP_VERSION;') (WSL)"
+        Write-Host "PHP $($null | & $wsl --exec php -r 'echo PHP_VERSION;') (WSL)"
     } elseif (-not (Test-Path $herdPhp) -or -not (Test-Command 'composer')) {
         Write-Step 'Installo PHP e Composer (php.new), accanto a eventuali altre versioni di PHP...'
         # Comando ufficiale di php.new, in un PowerShell separato.

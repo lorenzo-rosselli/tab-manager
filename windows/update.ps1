@@ -22,6 +22,25 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Disattiva la "Modifica rapida" di questa finestra del terminale. Con la modifica rapida accesa, un
+# clic nella finestra inizia una selezione di testo e Windows mette in pausa lo script finché non si
+# preme un tasto: sembra bloccato. Vale solo per questa finestra; se non riesce, si va avanti lo stesso.
+try {
+    Add-Type -Namespace TabManager -Name ConsoleMode -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr hConsole, out uint mode);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr hConsole, uint mode);
+'@
+    $consoleInput = [TabManager.ConsoleMode]::GetStdHandle(-10)   # STD_INPUT_HANDLE
+    $consoleMode = [uint32] 0
+    if ([TabManager.ConsoleMode]::GetConsoleMode($consoleInput, [ref] $consoleMode)) {
+        # toglie ENABLE_QUICK_EDIT_MODE (0x40); ENABLE_EXTENDED_FLAGS (0x80) serve perché la modifica valga
+        [void] [TabManager.ConsoleMode]::SetConsoleMode($consoleInput, ($consoleMode -band -bnot 0x40) -bor 0x80)
+    }
+} catch {
+}
+
 $ProgressPreference = 'SilentlyContinue'   # la barra di Invoke-WebRequest rallenterebbe molto il download
 
 $repo = 'lorenzo-rosselli/tab-manager'
