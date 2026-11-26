@@ -94,7 +94,6 @@ Le installazioni da ZIP si aggiornano da sole con le **Release** di GitHub (repo
   5. scrive il tag in `version.txt`, cancella la cartella temporanea e apre l'app (`conhost.exe --headless powershell.exe ... tab-manager.ps1 -SkipUpdate`, come il collegamento).
 
   Se un passo fallisce, rimette la versione precedente (stessa copia a specchio, al contrario), mostra l'errore e, premendo Invio, apre l'app: `version.txt` non cambia, quindi al prossimo avvio riprova. Durante l'aggiornamento il file `update.ps1` stesso viene sostituito: non è un problema, perché PowerShell legge tutto lo script prima di eseguirlo.
-- Un'installazione fatta da ZIP prima che esistesse l'aggiornamento automatico si aggiorna a mano una volta (nuovo ZIP estratto al posto della cartella vecchia, poi `Installa Tab Manager.cmd`); da lì in poi si aggiorna da sola.
 
 ### Disinstallazione
 Doppio clic su **`Disinstalla Tab Manager.cmd`** (nella cartella principale): avvia `windows\uninstall.ps1` come l'installatore avvia `setup.ps1` (`-ExecutionPolicy Bypass` solo per quell'avvio, `pause` alla fine). Lo script:

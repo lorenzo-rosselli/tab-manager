@@ -49,11 +49,7 @@ Tab Manager si aggiorna da solo. Ogni volta che lo apri controlla se su GitHub �
 - Senza Internet l'app si apre come sempre e l'aggiornamento aspetta il prossimo avvio.
 - Se l'aggiornamento non riesce, rimette la versione di prima e riprova al prossimo avvio.
 
-**Se hai una versione senza aggiornamento automatico** (installata prima che ci fosse), aggiornala a mano una volta: scarica il nuovo ZIP, sbloccalo, estrailo al posto della cartella vecchia e fai doppio clic su **`Installa Tab Manager.cmd`**. Non serve disinstallare. Da lì in poi si aggiorna da sola.
-
-Per aggiornare a mano in qualsiasi momento vale lo stesso procedimento.
-
-Chi aveva una versione precedente con i brani in `%LOCALAPPDATA%\TabManager`: l'installazione li sposta da sola in `Documenti\Tab Manager`. Il file vecchio resta, rinominato `database.sqlite.spostato`, e si può cancellare dopo aver controllato che i brani ci sono.
+Per aggiornare a mano: scarica il nuovo ZIP, sbloccalo, estrailo al posto della cartella vecchia e fai doppio clic su **`Installa Tab Manager.cmd`**. Non serve disinstallare.
 
 ## Disinstallare
 
