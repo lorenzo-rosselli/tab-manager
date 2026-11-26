@@ -2,7 +2,9 @@
 |--------------------------------------------------------------------------
 | Tab Manager – installazione e aggiornamento (lo avvia "Installa Tab Manager.cmd")
 |--------------------------------------------------------------------------
-| Prepara tutto ciò che serve per usare l'app su questo computer:
+| Prepara tutto ciò che serve per usare l'app su questo computer. Per prima cosa svuota
+| storage\framework\views (le pagine compilate da Laravel), così dopo un aggiornamento si vedono
+| subito quelle nuove. Poi:
 |  1. PHP e Composer. Se nel computer c'è WSL (Ubuntu) con PHP 8.4 o più recente e Composer, usa
 |     quelli: Smart App Control controlla solo i programmi di Windows, non quelli Linux di WSL, quindi
 |     funzionano anche quando Windows blocca il php.exe (l'app poi usa lo stesso PHP, vedi
@@ -163,6 +165,18 @@ try {
     Get-ChildItem -Path $root -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch '\\(node_modules|vendor)\\' } |
         Unblock-File -ErrorAction SilentlyContinue
+
+    # Pagine già compilate da Laravel (storage\framework\views): si cancellano a ogni installazione
+    # e aggiornamento, tranne .gitignore. Laravel ricompila una vista Blade solo se il file della vista
+    # è più recente di quello compilato, ma i file estratti da uno ZIP di GitHub hanno la data del
+    # commit, che può essere più vecchia: senza questa pulizia l'app continuerebbe a mostrare le
+    # pagine della versione precedente. Alla prima apertura Laravel le ricompila da sole.
+    $compiledViews = Join-Path $root 'storage\framework\views'
+    if (Test-Path $compiledViews) {
+        Get-ChildItem -LiteralPath $compiledViews -File -Force |
+            Where-Object { $_.Name -ne '.gitignore' } |
+            Remove-Item -Force -ErrorAction SilentlyContinue
+    }
 
     Update-Path
 
