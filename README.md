@@ -44,7 +44,7 @@ Conserva lo ZIP su una chiavetta, nel cloud o mandalo per email a te stesso.
 
 ## Aggiornamento
 
-Tab Manager si aggiorna da solo. Ogni volta che lo apri controlla se su GitHub è stata pubblicata una nuova versione (una **Release**). Se c'è, si apre una finestra "Aggiornamento di Tab Manager": scarica la nuova versione, la prepara e dopo qualche minuto apre l'app. Non chiudere quella finestra.
+Tab Manager si aggiorna da solo. Ogni volta che lo apri controlla se su GitHub è stata pubblicata una nuova versione (una **Release**). Se c'è, si apre una finestra "Aggiornamento di Tab Manager": scarica la nuova versione, la prepara e dopo qualche minuto apre l'app, con una finestra che dice a quale versione è arrivata e cosa c'è di nuovo. Non chiudere la finestra dell'aggiornamento finché non ha finito.
 - I brani non vengono toccati: prima di aggiornare ne fa comunque una copia in `Documenti\Tab Manager\Backup`.
 - Senza Internet l'app si apre come sempre e l'aggiornamento aspetta il prossimo avvio.
 - Se l'aggiornamento non riesce, rimette la versione di prima e riprova al prossimo avvio.

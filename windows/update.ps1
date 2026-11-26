@@ -12,7 +12,8 @@
 |     node_modules, public\build, storage, bootstrap\cache, il collegamento e version.txt.
 |     L'archivio dei brani è in Documenti, fuori dalla cartella dell'app: non viene mai toccato;
 |  4. esegue setup.ps1 della nuova versione (librerie, interfaccia, copia di sicurezza del
-|     database e migrate), scrive la nuova versione in version.txt e apre l'app.
+|     database e migrate), scrive la nuova versione in version.txt e le note della Release in
+|     storage\app\private\update-notes.json (l'app le mostra una volta in una finestra) e apre l'app.
 | Se qualcosa va storto rimette la versione precedente e apre quella: al prossimo avvio riprova.
 | Sul computer di sviluppo (cartella con .git) l'aggiornamento non parte mai: lì si usa git.
 #>
@@ -124,6 +125,25 @@ try {
     }
 
     [System.IO.File]::WriteAllText($versionFile, $Tag)
+
+    # 5. Note della Release (il testo scritto su GitHub), che l'app mostra una volta nella finestra
+    #    "Tab-Manager aggiornato alla versione ...!" (App\Services\UpdateNotes). Se non si riesce
+    #    a leggerle, la finestra compare lo stesso, con il solo titolo; se non si riesce a scrivere
+    #    il file, l'aggiornamento resta valido e la finestra non compare.
+    try {
+        $notes = ''
+        try {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/$Tag" `
+                -Headers @{ 'User-Agent' = 'TabManager' } -TimeoutSec 10 -UseBasicParsing
+            $notes = [string] $release.body
+        } catch {
+        }
+        $notesDir = Join-Path $root 'storage\app\private'
+        New-Item -ItemType Directory -Force -Path $notesDir | Out-Null
+        $json = @{ version = $Tag; notes = $notes } | ConvertTo-Json
+        [System.IO.File]::WriteAllText((Join-Path $notesDir 'update-notes.json'), $json, (New-Object System.Text.UTF8Encoding $false))
+    } catch {
+    }
     Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 
     Write-Host ''

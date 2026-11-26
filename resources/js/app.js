@@ -12,6 +12,10 @@
 | Tasto Esc: nelle pagine con un elemento data-escape-to (l'anteprima del brano) porta a quell'indirizzo.
 | Se è aperta la finestra di conferma dell'eliminazione, Esc chiude solo quella.
 | Nel form Esc non fa uscire (si perderebbero le modifiche): chiude solo le tavolozze (resources/js/tab-editor.js).
+|
+| Finestra "Tab-Manager aggiornato...": la pagina la contiene solo dopo un aggiornamento automatico
+| (layouts/_update-notes.blade.php) e qui si apre da sola. I link delle note si aprono in un'altra
+| finestra, così quella dell'app resta su Tab Manager.
 */
 
 const toggle = document.getElementById('theme-toggle');
@@ -43,4 +47,14 @@ if (escapeTarget) {
 
         window.location.href = escapeTarget.dataset.escapeTo;
     });
+}
+
+const updateNotes = document.getElementById('update-notes');
+
+if (updateNotes) {
+    updateNotes.querySelectorAll('a[href]').forEach((link) => {
+        link.target = '_blank';
+        link.rel = 'noopener';
+    });
+    updateNotes.showPopover();
 }

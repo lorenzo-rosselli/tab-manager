@@ -55,5 +55,7 @@
 
         @yield('content')
     </main>
+
+    @include('layouts._update-notes')
 </body>
 </html>
