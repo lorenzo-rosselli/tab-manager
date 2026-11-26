@@ -13,13 +13,13 @@
 
 /*
 | Foglio della tabulatura (editor nel form e anteprima): come un documento Word.
-| Il testo senza formattazione propria usa Lucida Console 10 pt; i paragrafi non hanno spazi
+| Il testo senza formattazione propria usa Lucida Console 12 pt; i paragrafi non hanno spazi
 | tra loro e un paragrafo vuoto resta una riga vuota. Interlinea "normal": quella del font,
 | come l'interlinea singola del Word.
 */
 .tab-sheet {
     font-family: 'Lucida Console', monospace;
-    font-size: 10pt;
+    font-size: 12pt;
     line-height: normal;
     color: #111827;
     white-space: pre-wrap;

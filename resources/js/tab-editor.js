@@ -28,7 +28,8 @@
 |   in fondo al foglio una riga per corda, per esempio "G|" seguito da 68 trattini.
 | - Sovrascrittura (pulsante "INS" nella barra o tasto Ins, come in Word): scrivendo, ogni carattere
 |   sostituisce quello a destra del cursore invece di spingerlo avanti, così le righe della tabulatura
-|   restano allineate; Backspace rimette un trattino al posto del carattere cancellato.
+|   restano allineate; Backspace rimette un trattino al posto del carattere cancellato e la barra
+|   spaziatrice scrive un trattino invece dello spazio.
 |   La scelta resta salvata nel browser (localStorage).
 | - Righe vuote: hanno anche loro un font e una dimensione (come il segno di paragrafo di Word), così
 |   cambiando la dimensione di più righe cambia anche l'altezza di quelle vuote (estensione EmptyLineFont).
@@ -49,8 +50,8 @@ import Highlight from '@tiptap/extension-highlight';
 import { MARGIN, drawPages, paginate, paperHeight, spacer } from './tab-pages.js';
 
 const DEFAULT_FONT = 'Lucida Console';
-const DEFAULT_SIZE = 10;
-const STAFF_DASHES = 68; // trattini di ogni riga della tabulatura vuota ("G|" + 68 = 70 caratteri: ci stanno nella riga)
+const DEFAULT_SIZE = 12;
+const STAFF_DASHES = 38; // trattini di ogni riga della tabulatura vuota ("G|" + 38 = 40 caratteri)
 const OVERWRITE_KEY = 'tab-manager-overwrite'; // dove il browser ricorda se la sovrascrittura è accesa
 const TAB_SIZE = 4; // il tasto Tab porta alla colonna successiva multipla di 4
 
@@ -83,7 +84,7 @@ const AutoLine = Extension.create({
 /* ---------------- Font e dimensione delle righe vuote ---------------- */
 
 // Una riga vuota non ha testo, quindi non ha segni di font o di dimensione: senza questa estensione
-// sarebbe sempre alta come il testo predefinito (Lucida Console 10 pt), anche in mezzo a righe a 12 pt.
+// sarebbe sempre alta come il testo predefinito (Lucida Console 12 pt), anche in mezzo a righe a 14 pt.
 // Come il segno di paragrafo di Word, ogni paragrafo può avere un suo font e una sua dimensione
 // (attributi fontFamily e fontSize del paragrafo), che contano solo quando il paragrafo è vuoto:
 // app.css li applica alle righe vuote, l'anteprima e il Word li leggono dal server (TabDocument).
@@ -293,6 +294,8 @@ const PageBreak = Node.create({
 // in fondo alla riga, o con del testo selezionato, si scrive come sempre.
 // Backspace, con la modalità accesa, non accorcia la riga: il carattere prima del cursore diventa "-"
 // e il cursore torna indietro di uno (all'inizio del paragrafo o con una selezione fa come sempre).
+// La barra spaziatrice, con la modalità accesa e senza selezione, scrive un "-" invece dello spazio
+// (sostituisce il carattere a destra, o lo aggiunge in fondo alla riga) e il cursore va avanti di uno.
 const Overwrite = Extension.create({
     name: 'overwrite',
 
@@ -378,9 +381,21 @@ const Overwrite = Extension.create({
                         return false; // scrittura normale
                     }
 
+                    // La barra spaziatrice scrive un trattino: si va avanti lungo la riga della
+                    // tabulatura senza lasciare buchi (come Backspace, che rimette un "-").
+                    if (text === ' ') {
+                        text = '-';
+                    }
+
                     const after = view.state.doc.resolve(from).nodeAfter; // cosa c'è a destra del cursore
                     if (!after?.isText) {
-                        return false; // fine del paragrafo (o un a capo): si aggiunge come sempre
+                        if (text !== '-') {
+                            return false; // fine del paragrafo (o un a capo): si aggiunge come sempre
+                        }
+                        // Spazio in fondo alla riga: si aggiunge il trattino al posto dello spazio.
+                        view.dispatch(view.state.tr.insertText('-', from).scrollIntoView());
+
+                        return true;
                     }
 
                     const length = Math.min(text.length, after.text.length);
@@ -876,7 +891,7 @@ if (element) {
     }
 
     // Aggiunge in fondo al foglio una tabulatura vuota: un paragrafo per corda, dalla più acuta
-    // ("G|-----…" per il basso a 4 corde), senza formattazione (Lucida Console 10 pt, a sinistra).
+    // ("G|-----…" per il basso a 4 corde), in Lucida Console, a sinistra, con la dimensione scelta nella barra.
     // Tra il testo sopra e la tabulatura resta una riga vuota: se il foglio finisce già con una riga
     // vuota si usa quella. In cima al foglio o a una pagina nuova la tabulatura parte dalla prima riga.
     function insertStaff() {
@@ -887,8 +902,14 @@ if (element) {
         }
 
         const { schema, doc, tr } = editor.state;
+        // Le righe prendono la dimensione scelta in quel momento nella barra (quella del punto in cui
+        // si trova il cursore); con la dimensione predefinita restano senza formattazione propria.
+        const size = `${sizeSelect.value}pt`;
+        const custom = Number(sizeSelect.value) !== DEFAULT_SIZE;
+        const marks = custom ? [schema.marks.textStyle.create({ fontSize: size })] : [];
+        const attrs = custom ? { fontSize: size } : null; // anche la riga vuota di distacco (EmptyLineFont)
         const lines = tuning.split(' ').map((name) => (
-            schema.nodes.paragraph.create(null, schema.text(`${name}|${'-'.repeat(STAFF_DASHES)}`))
+            schema.nodes.paragraph.create(attrs, schema.text(`${name}|${'-'.repeat(STAFF_DASHES)}`, marks))
         ));
         const end = doc.content.size;
         const last = doc.lastChild;
@@ -900,7 +921,7 @@ if (element) {
         } else if (lastEmpty || last.type.name === 'pageBreak') {
             tr.insert(end, lines);                                    // c'è già la riga vuota di distacco
         } else {
-            tr.insert(end, [schema.nodes.paragraph.create(), ...lines]);
+            tr.insert(end, [schema.nodes.paragraph.create(attrs), ...lines]);
         }
 
         tr.setSelection(Selection.atEnd(tr.doc)); // cursore in fondo all'ultima riga inserita
@@ -951,7 +972,7 @@ if (element) {
         const header = kind === 'header';
         const marks = [
             header ? schema.marks.bold.create() : schema.marks.italic.create(),
-            schema.marks.textStyle.create({ fontSize: header ? '14pt' : '8pt' }),
+            schema.marks.textStyle.create({ fontSize: header ? '16pt' : '8pt' }),
         ];
 
         return schema.nodes.paragraph.create(

@@ -40,7 +40,7 @@ class TabDocument
 
         $header = implode(' - ', array_filter([trim($artist), trim($title)]));
         if ($header !== '') {
-            $content[] = self::autoParagraph('header', $header, 'bold', '14pt');
+            $content[] = self::autoParagraph('header', $header, 'bold', '16pt');
         }
         $info = self::infoLine($instrument, $band);
         if ($info !== '') {
