@@ -1,6 +1,6 @@
-# Tab Manager – Specifiche del progetto
+# Tab Manager – Specifiche tecniche
 
-> Documento di riferimento per ricreare l'applicazione da zero.
+> Descrizione completa dell'applicazione com'è: basta per ricrearla da zero.
 > Da passare all'assistente all'inizio di una nuova sessione di lavoro.
 
 ---
@@ -15,13 +15,14 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 - Essere **snella e leggerissima**: poche pagine, nessun framework JavaScript (solo un editor di testo per il foglio, l'impaginazione del foglio in pagine A4 e poche righe per il tema e il tasto Esc), nessun servizio esterno.
 - Usare un solo utente, sul proprio computer, senza login.
 - Aprirsi come un programma: collegamento sul desktop con la sua icona e finestra dedicata (vedi sezione 2, "Avvio come app desktop").
+- **Non perdere mai i brani**: archivio fuori dalla cartella dell'app (in Documenti), copie automatiche e backup ZIP scaricabile (vedi sezione 2, "Archivio dei brani e copie di sicurezza").
 - Servire anche come **progetto di studio** per imparare le basi di Laravel.
 
 ### Cosa NON fa (fuori dallo scopo)
 - Non scarica le tabulature da siti esterni (niente scraping: ci sono problemi legali e di diritto d'autore).
 - Non usa l'intelligenza artificiale per generare le note musicali.
 - Non trascrive dall'audio.
-- Non ha più utenti, registrazione o login.
+- Non gestisce più utenti: niente registrazione né login.
 
 ---
 
@@ -40,11 +41,11 @@ L'app **non cerca e non genera** le tabulature da sola. È l'utente che le scriv
 
 ### Struttura della cartella del progetto
 Oltre alle cartelle standard di Laravel (`app`, `bootstrap`, `config`, `database`, `lang`, `public`, `resources`, `routes`, `storage`, `tests`), che restano dove Laravel se le aspetta:
-- `docs/`: i documenti di progetto, `SPECIFICHE-TABULATURE.md` (questo file) e `TABELLA-DI-MARCIA.md`;
+- `docs/`: questo documento, `Specifiche-Tecniche.md`;
 - `windows/`: gli script per Windows, cioè avvio in finestra dedicata, collegamenti e installazione (vedi "Avvio come app desktop");
 - nella cartella principale: `README.md` (istruzioni per chi installa l'app, mostrate da GitHub), `Installa Tab Manager.cmd` (il file da cliccare per installare o aggiornare), `Disinstalla Tab Manager.cmd` (il file da cliccare per disinstallare) e il collegamento `Tab Manager.lnk` (creato dall'installazione, non su git).
 
-### Note sull'ambiente (problemi già risolti)
+### Note sull'ambiente
 - **Smart App Control** blocca i `php.exe` scaricati a mano da windows.php.net (errore "bloccato dai criteri di Device Guard"). Il PHP installato con php.new invece funziona. Non si possono aggiungere eccezioni per singole app.
 - **Alternativa di riserva:** WSL con Ubuntu è già installato e configurato (PHP 8.5, Composer, Laravel Installer, Node). Se su Windows compare un nuovo blocco, si lavora lì, con i progetti in `~/progetti`.
 - **PowerShell 5.1 non supporta `&&`**: i comandi vanno eseguiti uno alla volta, oppure si usa PowerShell 7.
@@ -75,7 +76,7 @@ Chi usa l'app senza svilupparla la installa con un doppio clic, senza comandi (i
 - **`.env`**: solo se non esiste, lo crea copiando `.env.example`;
 - **archivio dei brani** in **`Documenti\Tab Manager\database.sqlite`** (cartella Documenti da `[Environment]::GetFolderPath('MyDocuments')`, quindi anche se è su OneDrive), vedi "Archivio dei brani e copie di sicurezza":
   - crea `Documenti\Tab Manager` e `Documenti\Tab Manager\Backup`;
-  - cerca archivi nelle posizioni vecchie: quello indicato da `DB_DATABASE` nel `.env` (o `database\database.sqlite` se manca) e `%LOCALAPPDATA%\TabManager\database.sqlite` (le prime versioni). Per ognuno (contato una sola volta anche se scritto con `/` o `\`): una copia in `Backup` ("… archivio precedente da AppData" / "… dalla cartella dell'app"); se in Documenti non c'è ancora un archivio, lo copia lì, altrimenti non sovrascrive quello di Documenti e avvisa; poi rinomina il file vecchio in `database.sqlite.spostato` (con data e ora se il nome è già preso), così non viene ripreso alla prossima installazione e si può cancellare a mano. Se la rinomina non riesce (app aperta) avvisa e prosegue;
+  - recupera gli archivi che si trovano in un'altra posizione: quello indicato da `DB_DATABASE` nel `.env` (o `database\database.sqlite`, il predefinito di Laravel, se manca) e `%LOCALAPPDATA%\TabManager\database.sqlite`. Per ognuno (contato una sola volta anche se scritto con `/` o `\`): una copia in `Backup` ("… archivio precedente da AppData" / "… dalla cartella dell'app"); se in Documenti non c'è ancora un archivio, lo copia lì, altrimenti non sovrascrive quello di Documenti e avvisa; poi rinomina il file originale in `database.sqlite.spostato` (con data e ora se il nome è già preso), così non viene ripreso alla prossima installazione e si può cancellare a mano. Se la rinomina non riesce (app aperta) avvisa e prosegue. Nessun file viene mai cancellato;
   - scrive nel `.env` `DB_DATABASE` con il percorso di Documenti (barre `/`, tra apici perché contiene spazi), subito dopo `DB_CONNECTION`;
 - `composer install`, `php artisan key:generate` (solo se manca la chiave), `npm install`, `npm run build`;
 - **database**: se il file non esiste lo crea, poi `migrate --force` e `db:seed --force` (i tre brani di prova); se esiste, prima `php artisan tab:backup --label="prima dell'aggiornamento"` (copia in `Backup`), poi solo `migrate --force` (i brani restano);
@@ -87,7 +88,7 @@ Doppio clic su **`Disinstalla Tab Manager.cmd`** (nella cartella principale): av
 - chiude l'app se è aperta: i processi di Edge con il profilo `%LOCALAPPDATA%\TabManager\Edge` e il server PHP sulla porta 8765;
 - cancella i collegamenti `Tab Manager.lnk` sul desktop e nella cartella dell'app (quello sul desktop solo se è davvero di Tab Manager, cioè se lancia `tab-manager.ps1`);
 - cancella il profilo di Edge dell'app (riprova per qualche secondo se Edge tiene ancora i file aperti);
-- **non tocca mai l'archivio dei brani né le sue copie** (`Documenti\Tab Manager`): alla fine dice dov'è (da `DB_DATABASE` nel `.env`). Se l'archivio è ancora dentro la cartella dell'app (versione vecchia non aggiornata), avvisa di rilanciare l'installazione o di copiarlo prima di cancellare la cartella. Chi vuole davvero cancellare i brani lo fa a mano. La cartella `%LOCALAPPDATA%\TabManager` (dove resta solo il profilo di Edge) viene tolta se resta vuota;
+- **non tocca mai l'archivio dei brani né le sue copie** (`Documenti\Tab Manager`): alla fine dice dov'è (da `DB_DATABASE` nel `.env`). Se l'archivio è dentro la cartella dell'app (succede solo se `setup.ps1` non è stato eseguito), avvisa di rilanciare l'installazione o di copiarlo prima di cancellare la cartella. Chi vuole davvero cancellare i brani lo fa a mano. La cartella `%LOCALAPPDATA%\TabManager` (dove resta solo il profilo di Edge) viene tolta se resta vuota;
 - **non** cancella la cartella dell'app (uno script non può cancellare la cartella da cui è in esecuzione, e sul computer di sviluppo è il progetto con git): alla fine la apre in Esplora file, già selezionata, da cancellare a mano;
 - **non** disinstalla PHP, Composer (php.new) e Node.js, che possono servire ad altri programmi. Il `README.md` spiega come toglierli a mano: cartella `%USERPROFILE%\.config\herd-lite` e la sua voce nel PATH dell'utente; Node.js da Impostazioni → App oppure `winget uninstall OpenJS.NodeJS.LTS`.
 
@@ -109,7 +110,7 @@ L'archivio è indipendente dall'app: si può cancellare, riscaricare, aggiornare
   
   I `.docx` servono per leggere e stampare (l'app non li sa rileggere); per ripristinare serve `database.sqlite`.
 - **Copie coerenti**: le copie del database si fanno con `VACUUM INTO` di SQLite, corrette anche se l'app sta scrivendo (una semplice copia del file potrebbe prenderne una versione a metà).
-- **Ripristino** (spiegato nel `README.md` e nel `LEGGIMI.txt`): chiudere l'app e mettere il `database.sqlite` del backup (o una copia automatica rinominata) in `Documenti\Tab Manager`, al posto di quello esistente. Su un altro computer: prima installare l'app e aprirla una volta. Nessun pulsante "Ripristina" per ora.
+- **Ripristino** (spiegato nel `README.md` e nel `LEGGIMI.txt`): chiudere l'app e mettere il `database.sqlite` del backup (o una copia automatica rinominata) in `Documenti\Tab Manager`, al posto di quello esistente. Su un altro computer: prima installare l'app e aprirla una volta. Nell'app non c'è un pulsante "Ripristina" (vedi sezione 9, sviluppi futuri).
 - Classe **`App\Services\TabBackup`**: `databasePath()`, `folder()` (la cartella `Backup` accanto al database), `hasToday()`, `snapshot($label)` (copia datata + pulizia delle più vecchie), `zip()` (crea lo ZIP in un file temporaneo e ne restituisce il percorso), `zipName()`. Lo ZIP si crea con `ZipArchive` di PHP, già presente perché serve anche a PHPWord (anche il .docx è uno ZIP): nessuna libreria in più.
 
 In `.gitattributes`, `*.cmd` e `*.ps1` hanno terminazioni di riga **CRLF** (anche nello ZIP di GitHub): `cmd.exe` e PowerShell 5.1 le vogliono così.
@@ -249,7 +250,7 @@ Route::get('backup', BackupController::class)->name('backup');
   - Il layout legge il cookie con `request()->cookie('theme')` e scrive già la classe giusta su `<html>`: nessun "lampo" di colore al caricamento. Senza cookie: tema scuro.
   - Il cookie è scritto dal browser, quindi va escluso dalla cifratura dei cookie di Laravel: in `bootstrap/app.php`, `$middleware->encryptCookies(except: ['theme'])`.
 - Il layout carica `@vite(['resources/css/app.css', 'resources/js/app.js'])`; niente `@fonts`, si usano i font di sistema. Le pagine del form caricano in più `@vite('resources/js/tab-editor.js')` (che a sua volta usa `tab-pages.js`), l'anteprima `@vite('resources/js/tab-pages.js')`.
-- **Tutti i comandi sono icone**, con il nome come tooltip (attributo `title`) e `aria-label` per i lettori di schermo. Resta testo solo il link dentro la frase dell'elenco vuoto ("Aggiungi il primo").
+- **Tutti i comandi sono icone**, con il nome come tooltip (attributo `title`) e `aria-label` per i lettori di schermo. Fanno eccezione, come in Word, le lettere della barra di formattazione (**G** / *C* / <u>S</u>, la "A" del colore e "INS") e il link dentro la frase dell'elenco vuoto ("Aggiungi il primo").
 
 ### Viste Blade (`resources/views`)
 - `layouts/app.blade.php`: struttura comune; classe del tema su `<html>`; icona dell'app (`public/favicon.svg` e `public/favicon.ico`, usata dalla scheda del browser, dalla finestra dedicata e dalla barra delle applicazioni); intestazione con il logo e il nome dell'app, l'interruttore del tema e l'icona "Nuovo brano"; messaggio flash `session('status')`.
@@ -297,7 +298,7 @@ Route::get('backup', BackupController::class)->name('backup');
   Seguono i campi: se cambiano titolo, artista, strumento, gruppo o le spunte, le righe si aggiornano (togliendo tutte le spunte la seconda riga sparisce). Ogni riga ricorda il testo scritto in automatico (`autoText`): se nel foglio il testo è diverso, vuol dire che è stata **modificata a mano** e da lì in poi non viene più toccata. Andando a capo dentro una riga automatica, il nuovo paragrafo è normale.
 - I valori iniziali vengono da `old()` se la validazione è fallita, altrimenti dal brano (o, per un brano nuovo, da un foglio vuoto).
 - Gli errori di validazione compaiono sotto ogni campo.
-- I pulsanti Salva e Annulla non sono in fondo ma in alto, accanto al titolo della pagina (`songs/_form-header.blade.php`).
+- I pulsanti Salva e Annulla stanno in alto, accanto al titolo della pagina (`songs/_form-header.blade.php`), non in fondo al form.
 - **Tasto Esc**: chiude la tavolozza aperta e nient'altro. Nel form non fa uscire dalla pagina, così non si perdono le modifiche per sbaglio (nell'anteprima invece Esc torna all'elenco).
 
 ---
@@ -367,27 +368,36 @@ Il **Seeder** `SongSeeder` inserisce tre brani con tabulature **inventate** (non
 - "Linea a cinque corde": basso a 5 corde, senza gruppo; seconda riga "Strumento: Basso"; la tabulatura inizia con "Accordatura: B E A D G";
 - "Arpeggio di studio": chitarra a 6 corde, gruppo "Trio Acustico"; seconda riga "Trio Acustico" (strumento non spuntato).
 
-Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh --seed`.
+Il seeder parte da solo solo quando l'installazione crea un database nuovo. Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh --seed`. **Attenzione**: cancella tutti i brani dell'archivio in uso (quello di `DB_DATABASE`); prima fare un backup.
 
 ---
 
-## 9. Piano di sviluppo a tappe
+## 9. Creazione del progetto, test e sviluppi futuri
 
-1. **Setup** ✅:
-   - progetto `laravel new tab-manager` (nessuno starter kit, Pest, SQLite). La cartella `Tab Manager` conteneva già il repository git: il progetto è stato creato in una cartella temporanea e poi spostato dentro `Tab Manager`, mantenendo `README.md`, le specifiche e il collegamento a GitHub. Il `.gitignore` è quello di Laravel 13;
-   - `composer require phpoffice/phpword`;
-   - `npm install @tiptap/core @tiptap/pm @tiptap/starter-kit @tiptap/extension-text-style @tiptap/extension-text-align @tiptap/extension-highlight`;
-   - versioni: Laravel Framework 13.44.1, `phpoffice/phpword` 1.4.0 (con `phpoffice/math` 0.3.0), Tiptap 3.x;
-   - `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it`.
-2. **Database** ✅: migration `songs`, modello `Song`, Enum `Instrument`, classe `TabDocument`, seeder con dati di prova.
-3. **Rotte e controller** ✅: `SongController` resource, Form Request `SongRequest`.
-4. **Viste** ✅: layout, elenco, form (create/edit) con il foglio, anteprima, icone.
-5. **Export Word** ✅: servizio `TabDocxGenerator` e azione `download`.
-6. **Rifiniture** 🔄: messaggi flash, modale di conferma eliminazione, ricerca e ordinamento multiplo nell'elenco, riga cliccabile, traduzioni in italiano, tema chiaro/scuro con interruttore, foglio con editor di testo ricco su pagine A4, barra di formattazione (con colore, evidenziatore, interruzione di pagina e tabulatura vuota), righe automatiche e numero di corde.
-7. **Test** (Pest): creazione, validazione, modifica, eliminazione, download del .docx (risposta 200 e content-type corretto).
+### Creazione del progetto
+- `laravel new tab-manager`: nessuno starter kit, test con Pest, database SQLite. Il `.gitignore` è quello di Laravel 13;
+- `composer require phpoffice/phpword`;
+- `npm install @tiptap/core @tiptap/pm @tiptap/starter-kit @tiptap/extension-text-style @tiptap/extension-text-align @tiptap/extension-highlight`;
+- versioni: Laravel Framework 13.44.1, `phpoffice/phpword` 1.4.0 (con `phpoffice/math` 0.3.0), Tiptap 3.x;
+- `.env` e `.env.example`: `APP_NAME="Tab Manager"`, `APP_LOCALE=it` (`DB_DATABASE` lo scrive `windows\setup.ps1`, sezione 2).
 
-### Possibili sviluppi futuri (non ora)
+Le classi si creano con i comandi di Laravel: `php artisan make:model Song -m -s`, `make:enum Enums/Instrument --string`, `make:controller SongController --resource --model=Song`, `make:request SongRequest`, `make:class Services/TabDocxGenerator`.
+
+### Test automatici (Pest, da scrivere)
+In `tests/Feature`, con un database di test:
+- creazione di un brano valido (redirect all'anteprima e record nel database);
+- validazione: campi obbligatori mancanti, `instrument` non valido, numero di corde non ammesso per lo strumento;
+- modifica ed eliminazione di un brano;
+- download del `.docx`: risposta 200 e content-type `application/vnd.openxmlformats-officedocument.wordprocessingml.document`;
+- backup ZIP: risposta 200, content-type `application/zip`, con i `.docx` e `database.sqlite`.
+
+Per creare i brani nei test serve una factory (`php artisan make:factory SongFactory`). Il test di esempio di Laravel (`tests/Feature/ExampleTest.php`) va sostituito: la home `/` fa un redirect, quindi non risponde 200.
+
+### Possibili sviluppi futuri
 - Pulsante "Ripristina" per caricare un backup dall'app
+- Avviso del browser (`beforeunload`) uscendo dal form con modifiche non salvate anche dai link dell'intestazione o chiudendo la finestra
+- Tabulatura sempre intera tra due pagine (righe tenute insieme anche nel Word)
+- Duplicare un brano; filtro per strumento nell'elenco; stampa diretta dall'anteprima
 - Trasposizione automatica di semitoni
 - Esportazione anche in PDF o in .txt
 - Importazione da MusicXML / Guitar Pro
@@ -399,8 +409,9 @@ Per ricreare il database da zero con i dati di prova: `php artisan migrate:fresh
 
 Quando ricevi questo file:
 - Considera l'ambiente descritto nella sezione 2 (Windows, PowerShell 5.1, Smart App Control, percorso con spazi).
-- Lavora **per gradi**, una tappa alla volta (sezione 9), spiegando cosa fa ogni file e ogni comando. L'utente sta imparando PHP e Laravel.
+- Lavora **per gradi**, spiegando cosa fa ogni file e ogni comando. L'utente sta imparando PHP e Laravel.
 - Rispondi in **italiano**.
 - Mantieni l'app **semplice**: non aggiungere librerie o funzioni non previste senza chiedere.
 - **Non gestire commit e push su git**: li fa l'utente quando lo ritiene opportuno.
-- Se una decisione modifica quanto scritto qui, **aggiorna questo file** (sia nel progetto sia nella cartella `docs/`), correggendo direttamente il punto interessato: le specifiche descrivono sempre l'app com'è, non la storia delle modifiche (quella sta nella tabella di marcia).
+- Se una decisione modifica quanto scritto qui, **aggiorna questo file** (sia nel Project sia nella cartella `docs/`), correggendo direttamente il punto interessato: le specifiche descrivono sempre l'app com'è, come se fosse stata progettata così fin dall'inizio, senza la storia delle modifiche.
+- Il database contiene i brani veri dell'utente: le modifiche alla tabella si fanno con una **migration nuova** (mai riscrivendo quelle esistenti né con `migrate:fresh`).
